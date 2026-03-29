@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=disorientation_plugin
+X-Python-2-Compatible=false
+X-Krita-Manual=myPluginManual.html
+Name=Disorientation Plug-in
+Comment=Extending Ahmed's theory of disorientation as a creative methodology
