@@ -1,1 +1,1 @@
-# Marks the folder as a Python package
+from .plugin_main import *

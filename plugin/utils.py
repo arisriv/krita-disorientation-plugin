@@ -1,1 +1,0 @@
-# Helper functions for the plugin will go here.
