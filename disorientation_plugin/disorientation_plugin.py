@@ -2,6 +2,7 @@
 
 from krita import *
 from PyQt5.QtWidgets import QMessageBox
+from .ui import DisorientationUI
 
 class DisorientationPlugin(Extension):
     def __init__(self, parent):
@@ -19,7 +20,8 @@ class DisorientationPlugin(Extension):
         action.triggered.connect(self.say_hello)
 
     def say_hello(self):
-        QMessageBox.information(None, "Plugin", "Plugin is working!")
+        self.panel = DisorientationUI()
+        self.panel.show()
 
 Krita.instance().addExtension(
     DisorientationPlugin(Krita.instance())
