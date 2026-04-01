@@ -7,6 +7,7 @@ from .ui import DisorientationUI
 class DisorientationPlugin(Extension):
     def __init__(self, parent):
         super().__init__(parent)
+        self.mark_fading_enabled = False
 
     def setup(self):
         pass
@@ -20,7 +21,7 @@ class DisorientationPlugin(Extension):
         action.triggered.connect(self.say_hello)
 
     def say_hello(self):
-        self.panel = DisorientationUI()
+        self.panel = DisorientationUI(self)
         self.panel.show()
 
 Krita.instance().addExtension(
