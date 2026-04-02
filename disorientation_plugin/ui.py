@@ -3,9 +3,11 @@
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QPushButton,
     QLabel,
     QCheckBox,
+    QListWidget,
     QGroupBox
 )
 from .interventions import test_intervention
@@ -19,7 +21,55 @@ class DisorientationUI(QWidget):
         self.plugin = plugin
 
         self.setWindowTitle("Disorientation Interventions")
-        self.setMinimumWidth(320)
+        self.setMinimumWidth(1100)
+        self.setMinimumHeight(600)
+
+        # ==================================================
+        # Intervention Catalog (to populate dialog)
+        # ==================================================
+
+        self.catalog = {
+            "Permanence + Revision": [
+                {
+                    "key": "mark_fading",
+                    "title": "Mark Fading",
+                    "description": "Gradually destabilizes the permanence of marks over time. For now, this is a stored toggle only.",
+                    "control": "checkbox",
+                    "label": "Enable Mark Fading"
+                },
+            ],
+            "Process + Temporality": [
+                {
+                    "key": "canvas_toss",
+                    "title": "Canvas Toss",
+                    "description": "Introduces the possibility of abandoning the current canvas and beginning again.",
+                    "control": "button",
+                    "label": "Test Canvas Toss"
+                }
+            ],
+            "Artistic Milieu": [
+                {
+                    "key": "scenius_prompt",
+                    "title": "Scenius Prompt",
+                    "description": "Prompts engagement with another artwork, artist, or reference before continuing.",
+                    "control": "button",
+                    "label": "Test Scenius Prompt"
+                }
+            ],
+            "Somaesthetics + Physical Environment": [
+                {
+                    "key": "posture_check",
+                    "title": "Posture Check",
+                    "description": "Interrupts the digital workflow with a brief prompt about bodily position and orientation.",
+                    "control": "button",
+                    "label": "Test Posture Check"
+                }
+            ]
+        }
+
+        # Keep track of what is currently selected in the dialog
+        self.current_category = None
+        self.current_intervention = None
 
         # ==================================================
         # Main layout setup
@@ -30,63 +80,217 @@ class DisorientationUI(QWidget):
         layout.setSpacing(12)
 
         title = QLabel("Disorientation Interventions")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setStyleSheet("font-size: 20px; font-weight: bold;")
         layout.addWidget(title)
 
         subtitle = QLabel("Prototype controls for creative workflow interventions")
         subtitle.setStyleSheet("color: gray; font-size: 11px;")
         layout.addWidget(subtitle)
 
-        # --- Testing controls ---
-        testing_group, testing_layout = self.make_section("Testing")
+        # ==================================================
+        # Three-pane layout construction
+        # ==================================================
 
-        self.test_button = QPushButton("Test Intervention")
-        self.test_button.clicked.connect(test_intervention)
-        self.test_button.setStyleSheet("padding: 6px;")
-        testing_layout.addWidget(self.test_button)
+        body_layout = QHBoxLayout()
+        body_layout.setSpacing(12)
 
-        layout.addWidget(testing_group)
+        # --- Left pane: framework categories ---
+
+        self.category_group = QGroupBox("Framework Categories")
+        self.category_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        category_layout = QVBoxLayout()
+
+        self.category_list = QListWidget()
+        self.category_list.addItems(self.catalog.keys())
+        category_layout.addWidget(self.category_list)
+
+        self.category_group.setLayout(category_layout)
+        body_layout.addWidget(self.category_group, 2)
+
+        # --- Middle pane: interventions in selected category ---
+
+        self.intervention_group = QGroupBox("Interventions")
+        self.intervention_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        intervention_layout = QVBoxLayout()
+
+        self.intervention_list = QListWidget()
+        intervention_layout.addWidget(self.intervention_list)
+
+        self.intervention_group.setLayout(intervention_layout)
+        body_layout.addWidget(self.intervention_group, 2)
+
+        # --- Right pane: selected intervention details ---
+
+        self.detail_group = QGroupBox("Details")
+        self.detail_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        detail_layout = QVBoxLayout()
+        detail_layout.setSpacing(10)
+
+        self.detail_title = QLabel("Select an intervention")
+        self.detail_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        detail_layout.addWidget(self.detail_title)
+
+        self.detail_description = QLabel("Choose a framework category, then choose an intervention to view its details.")
+        self.detail_description.setWordWrap(True)
+        self.detail_description.setStyleSheet("color: gray; font-size: 11px;")
+        detail_layout.addWidget(self.detail_description)
+
 
         # ==================================================
-        # Permanence + Revision interventions
+        # Detail pane controls (dynamic intervention UI)
         # ==================================================
-        permanence_group, permanence_layout = self.make_section("Permanence + Revision")
+        # Checkbox control for toggle-based interventions
+        self.detail_checkbox = QCheckBox("")
+        self.detail_checkbox.hide()
+        detail_layout.addWidget(self.detail_checkbox)
 
-        self.mark_fading_checkbox = QCheckBox("Mark Fading")
-        permanence_layout.addWidget(self.mark_fading_checkbox)
+        # Button control for action-based interventions
+        self.detail_button = QPushButton("")
+        self.detail_button.setStyleSheet("padding: 6px;")
+        self.detail_button.hide()
+        detail_layout.addWidget(self.detail_button)
 
-        self.status_label = QLabel("Status: Off")
-        self.status_label.setStyleSheet("color: gray; font-size: 11px; padding-left: 2px;")
-        permanence_layout.addWidget(self.status_label)
+        # Status label for current intervention
+        self.detail_status = QLabel("")
+        self.detail_status.setStyleSheet("color: gray; font-size: 11px;")
+        detail_layout.addWidget(self.detail_status)
 
-        # Initialize checkbox from stored plugin state so that UI reflects
-        # current intervention state when dialog opens; second line updates
-        # label immediately to match stored state
-        self.mark_fading_checkbox.setChecked(self.plugin.mark_fading_enabled)
-        self.toggle_mark_fading()
+        # Push controls upward a bit
+        detail_layout.addStretch()
 
-        # Directs connection between UI checkbox and updating the plugin state
-        self.mark_fading_checkbox.stateChanged.connect(self.toggle_mark_fading)
+        self.detail_group.setLayout(detail_layout)
+        body_layout.addWidget(self.detail_group, 3)
 
-        layout.addWidget(permanence_group)
-        
+        # Add 3-pane body to main layout
+        layout.addLayout(body_layout)
         self.setLayout(layout)
 
-    def toggle_mark_fading(self):
-        # Persist checkbox state on plugin to survive dialog close/reopen
-        self.plugin.mark_fading_enabled = self.mark_fading_checkbox.isChecked()
+        # ==================================================
+        # Signal wiring
+        # ==================================================
 
-        if self.mark_fading_checkbox.isChecked():
-            self.status_label.setText("Status: On")
+        # Left pane selection updates middle pane
+        self.category_list.currentTextChanged.connect(self.on_category_changed)
+
+        # Middle pane selection updates right pane
+        self.intervention_list.currentTextChanged.connect(self.on_intervention_changed)
+
+        # Checkbox in right pane updates plugin state
+        self.detail_checkbox.stateChanged.connect(self.on_detail_checkbox_changed)
+
+        # Initialize first category selection
+        self.category_list.setCurrentRow(0)
+
+    # ==================================================
+    # Category/intervention selection logic
+    # ==================================================
+    def on_category_changed(self, category_name):
+        # Update current category
+        self.current_category = category_name
+
+        # Clear and repopulate intervention list
+        self.intervention_list.clear()
+
+        if not category_name:
+            return
+
+        interventions = self.catalog.get(category_name, [])
+        for intervention in interventions:
+            self.intervention_list.addItem(intervention["title"])
+
+        # Auto-select first intervention in category
+        if interventions:
+            self.intervention_list.setCurrentRow(0)
         else:
-            self.status_label.setText("Status: Off")
-    
-    # Helper to create consistently styled UI
-    def make_section(self, title):
-        group = QGroupBox(title)
+            self.clear_detail_pane()
 
-        group_layout = QVBoxLayout()
-        group_layout.setSpacing(8)
+    def on_intervention_changed(self, intervention_title):
+        if not self.current_category or not intervention_title:
+            self.clear_detail_pane()
+            return
 
-        group.setLayout(group_layout)
-        return group, group_layout
+        # Find intervention metadata in current category
+        interventions = self.catalog.get(self.current_category, [])
+        selected = None
+        for intervention in interventions:
+            if intervention["title"] == intervention_title:
+                selected = intervention
+                break
+
+        if selected is None:
+            self.clear_detail_pane()
+            return
+
+        self.current_intervention = selected
+
+        # Update detail text
+        self.detail_title.setText(selected["title"])
+        self.detail_description.setText(selected["description"])
+        self.detail_status.setText("")
+
+        # Hide both controls first, then show only the relevant one
+        self.detail_checkbox.hide()
+        self.detail_button.hide()
+
+        # Remove any previous button callback before attaching a new one
+        try:
+            self.detail_button.clicked.disconnect()
+        except TypeError:
+            pass
+
+        # Show checkbox for toggle-based interventions
+        if selected["control"] == "checkbox":
+            self.detail_checkbox.setText(selected["label"])
+
+            # Sync checkbox with stored plugin state
+            if selected["key"] == "mark_fading":
+                self.detail_checkbox.blockSignals(True)
+                self.detail_checkbox.setChecked(self.plugin.mark_fading_enabled)
+                self.detail_checkbox.blockSignals(False)
+
+                if self.plugin.mark_fading_enabled:
+                    self.detail_status.setText("Currently enabled")
+                else:
+                    self.detail_status.setText("Currently disabled")
+
+            self.detail_checkbox.show()
+
+        # Show button for action-based interventions
+        elif selected["control"] == "button":
+            self.detail_button.setText(selected["label"])
+            self.detail_button.clicked.connect(self.run_selected_button_intervention)
+            self.detail_button.show()
+
+    # ==================================================
+    # Detail-pane reset logic
+    # ==================================================
+    def clear_detail_pane(self):
+        self.current_intervention = None
+        self.detail_title.setText("Select an intervention")
+        self.detail_description.setText("Choose a framework category, then choose an intervention to view its details.")
+        self.detail_status.setText("")
+        self.detail_checkbox.hide()
+        self.detail_button.hide()
+
+    # ==================================================
+    # Detail-pane control logic
+    # ==================================================
+    def on_detail_checkbox_changed(self):
+        if not self.current_intervention:
+            return
+
+        # Persist Mark Fading state on plugin
+        if self.current_intervention["key"] == "mark_fading":
+            self.plugin.mark_fading_enabled = self.detail_checkbox.isChecked()
+
+            if self.plugin.mark_fading_enabled:
+                self.detail_status.setText("Currently enabled")
+            else:
+                self.detail_status.setText("Currently disabled")
+
+    def run_selected_button_intervention(self):
+        if not self.current_intervention:
+            return
+
+        # For now, all button-based interventions use the existing test function
+        test_intervention()
