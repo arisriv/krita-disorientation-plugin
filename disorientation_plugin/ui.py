@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QGroupBox
 )
-from .interventions import test_intervention
+from .interventions import INTERVENTION_FUNCTIONS
 from .catalog import INTERVENTION_CATALOG
 
 class DisorientationUI(QWidget):
@@ -252,6 +252,9 @@ class DisorientationUI(QWidget):
     def run_selected_button_intervention(self):
         if not self.current_intervention:
             return
+        
+        intervention_key = self.current_intervention["key"]
+        intervention_fn = INTERVENTION_FUNCTIONS.get(intervention_key)
 
-        # For now, all button-based interventions use the existing test function
-        test_intervention()
+        if intervention_fn is not None:
+            intervention_fn()
