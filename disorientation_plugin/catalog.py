@@ -7,7 +7,8 @@ INTERVENTION_CATALOG = {
             "title": "Mark Fading",
             "description": "Gradually destabilizes the permanence of marks over time. For now, this is a stored toggle only.",
             "control": "checkbox",
-            "label": "Enable Mark Fading"
+            "label": "Enable Mark Fading",
+            "state_attr": "mark_fading_enabled"
         }
     ],
     "Process + Temporality": [
@@ -16,7 +17,8 @@ INTERVENTION_CATALOG = {
             "title": "Canvas Toss",
             "description": "Introduces the possibility of abandoning the current canvas and beginning again.",
             "control": "button",
-            "label": "Test Canvas Toss"
+            "label": "Test Canvas Toss",
+            "state_attr": "canvas_toss_enabled"
         }
     ],
     "Artistic Milieu": [

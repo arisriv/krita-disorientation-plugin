@@ -203,16 +203,20 @@ class DisorientationUI(QWidget):
         if selected["control"] == "checkbox":
             self.detail_checkbox.setText(selected["label"])
 
-            # Sync checkbox with stored plugin state
-            if selected["key"] == "mark_fading":
-                self.detail_checkbox.blockSignals(True)
-                self.detail_checkbox.setChecked(self.plugin.mark_fading_enabled)
-                self.detail_checkbox.blockSignals(False)
+            # Read the plugin state attribute from catalog metadata
+            state_attr = selected["state_attr"]
+            current_value = getattr(self.plugin, state_attr)
 
-                if self.plugin.mark_fading_enabled:
-                    self.detail_status.setText("Currently enabled")
-                else:
-                    self.detail_status.setText("Currently disabled")
+            # Sync checkbox UI without firing its signal
+            self.detail_checkbox.blockSignals(True)
+            self.detail_checkbox.setChecked(current_value)
+            self.detail_checkbox.blockSignals(False)
+
+            # Update status text to match stored state
+            if current_value:
+                self.detail_status.setText("Currently enabled")
+            else:
+                self.detail_status.setText("Currently disabled")
 
             self.detail_checkbox.show()
 
@@ -240,14 +244,18 @@ class DisorientationUI(QWidget):
         if not self.current_intervention:
             return
 
-        # Persist Mark Fading state on plugin
-        if self.current_intervention["key"] == "mark_fading":
-            self.plugin.mark_fading_enabled = self.detail_checkbox.isChecked()
+        # Read the plugin state attribute from catalog metadata
+        state_attr = self.current_intervention["state_attr"]  # ADDED
+        new_value = self.detail_checkbox.isChecked()  # ADDED
 
-            if self.plugin.mark_fading_enabled:
-                self.detail_status.setText("Currently enabled")
-            else:
-                self.detail_status.setText("Currently disabled")
+        # Persist checkbox state on the plugin object
+        setattr(self.plugin, state_attr, new_value)  # ADDED
+
+        # Update status text to reflect current state
+        if new_value:  # CHANGED
+            self.detail_status.setText("Currently enabled")
+        else:
+            self.detail_status.setText("Currently disabled")
 
     def run_selected_button_intervention(self):
         if not self.current_intervention:

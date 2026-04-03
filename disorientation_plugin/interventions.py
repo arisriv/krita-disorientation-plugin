@@ -63,5 +63,7 @@ def canvas_toss():
 # Registry mapping intervention keys to executable functions
 INTERVENTION_FUNCTIONS = {
     "test_intervention": test_intervention,
-    "canvas_toss": canvas_toss
+    "canvas_toss": canvas_toss,
+    "scenius_prompt": test_intervention,
+    "posture_check": test_intervention
 }
