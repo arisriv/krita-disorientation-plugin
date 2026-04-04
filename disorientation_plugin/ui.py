@@ -240,16 +240,16 @@ class DisorientationUI(QWidget):
     # ==================================================
     # Detail-pane control logic
     # ==================================================
-    def on_detail_checkbox_changed(self):
+    def on_detail_checkbox_changed(self, state):
         if not self.current_intervention:
             return
 
         # Read the plugin state attribute from catalog metadata
-        state_attr = self.current_intervention["state_attr"]  # ADDED
-        new_value = self.detail_checkbox.isChecked()  # ADDED
+        state_attr = self.current_intervention["state_attr"]
+        new_value = self.detail_checkbox.isChecked()
 
         # Persist checkbox state on the plugin object
-        setattr(self.plugin, state_attr, new_value)  # ADDED
+        setattr(self.plugin, state_attr, new_value)
 
         # Update status text to reflect current state
         if new_value:  # CHANGED

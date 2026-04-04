@@ -24,6 +24,10 @@ class DisorientationPlugin(Extension):
     def say_hello(self):
         self.panel = DisorientationUI(self)
         self.panel.show()
+    
+    # ==================================================================
+    # TO BUILD: TIMER-BASED PROBABILISTIC TRIGGER FOR INTERVENTIONS
+    # ==================================================================
 
 Krita.instance().addExtension(
     DisorientationPlugin(Krita.instance())

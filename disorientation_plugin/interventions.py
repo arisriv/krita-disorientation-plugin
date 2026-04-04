@@ -4,6 +4,7 @@ from krita import *
 from PyQt5.QtWidgets import QMessageBox
 from datetime import datetime
 from pathlib import Path
+import random
 
 def test_intervention():
     QMessageBox.information(
@@ -60,10 +61,34 @@ def canvas_toss():
         f"Old canvas saved to:\n{backup_path}\n\nA new blank canvas has been opened."
     )
 
+# =====================================================================
+# ARTISTIC MILIEU INTERVENTIONS
+# =====================================================================
+
+
+def perception_reframe():
+    prompts = [
+        "Imagine this artwork will be viewed from twenty feet away.",
+        "Imagine this artwork will appear briefly in a fast-scrolling social media feed.",
+        "Imagine this artwork will be printed very small in a book.",
+        "Imagine this artwork will be scaled into a large mural.",
+        "Imagine this artwork will hang in the corner of a gallery."
+        #TKTKTK Add more for variance?
+    ]
+
+    prompt = random.choice(prompts)
+
+    QMessageBox.information(
+        None,
+        "Placement / Perception Reframing",
+        f"{prompt}\n\nMake at least one change to your artwork based on this new viewing context."
+    )
+
 # Registry mapping intervention keys to executable functions
 INTERVENTION_FUNCTIONS = {
     "test_intervention": test_intervention,
     "canvas_toss": canvas_toss,
     "scenius_prompt": test_intervention,
-    "posture_check": test_intervention
+    "posture_check": test_intervention,
+    "perception_reframe": perception_reframe
 }

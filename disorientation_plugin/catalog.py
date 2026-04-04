@@ -28,6 +28,13 @@ INTERVENTION_CATALOG = {
             "description": "Prompts engagement with another artwork, artist, or reference before continuing.",
             "control": "button",
             "label": "Test Scenius Prompt"
+        },
+        {
+            "key": "perception_reframe",
+            "title": "Placement / Perception Reframing",
+            "description": "Reframe the artwork according to a new imagined viewing context.",
+            "control": "button",
+            "label": "Generate Reframing Prompt"
         }
     ],
     "Somaesthetics + Physical Environment": [
