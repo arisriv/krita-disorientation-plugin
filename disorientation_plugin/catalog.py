@@ -42,6 +42,13 @@ INTERVENTION_CATALOG = {
             "description": "Reframe the artwork according to a new imagined viewing context.",
             "control": "button",
             "label": "Generate Reframing Prompt"
+        },
+        {
+            "key": "memory_reflection",
+            "title": "Memory-Based Reflection",
+            "description": "Provides a prompt tied to memory and asks the artist to reflect before returning to the canvas.",
+            "control": "button",
+            "label": "Start Memory Reflection"
         }
     ],
     "Somaesthetics + Physical Environment": [

@@ -122,6 +122,38 @@ def body_reorientation():
     # while the timer runs.
     dialog.show()
 
+
+def memory_reflection():
+    # TO ADD FUNCTIONALITY FOR BLOCKING EDITS WHILE TIMER
+    prompts = [
+        ("Think of a place you lived as a child. Sit with that memory before returning to the canvas.", 45),
+        ("Think of the last place where you felt calm. Reflect on it before returning to the canvas.", 45),
+        ("Think of a person who shaped how you see the world. Hold them in mind before returning to the canvas.", 60),
+        ("Think of a conversation that stayed with you longer than you expected. Reflect on it before returning to the canvas.", 45),
+        ("Think of a moment when you felt unexpectedly proud of something small. Sit with that memory before returning to the canvas.", 45),
+        ("Think of the first memory that comes to mind from this morning. Reflect on it before returning to the canvas.", 30),
+        ("Think of a moment where something ordinary suddenly felt strange or unfamiliar. Sit with that memory before returning to the canvas.", 45),
+        ("Think of a moment when time seemed to slow down. Reflect on it before returning to the canvas.", 60),
+        ("Think of a vivid sensory memory — a smell, sound, or texture you remember clearly. Sit with that memory before returning to the canvas.", 45),
+        ("Think of a memory tied to a particular object you once owned. Reflect on it before returning to the canvas.", 45),
+        ("Think of a moment when you changed your mind about something important. Sit with that memory before returning to the canvas.", 60),
+        ("Think of a memory that feels distant but still emotionally vivid. Reflect on it before returning to the canvas.", 60),
+        ("Think of a place you returned to after a long time away. Sit with that memory before returning to the canvas.", 45),
+        ("Think of a moment where you noticed something others seemed to overlook. Reflect on it before returning to the canvas.", 45),
+    ]
+
+    prompt, duration = random.choice(prompts)
+
+    dialog = CountdownDialog(
+        "Memory-Based Reflection",
+        prompt,
+        duration
+    )
+
+    # Keep a reference so the dialog stays alive after this function ends
+    active_dialogs.append(dialog)
+    dialog.show()
+
 # Registry mapping intervention keys to executable functions
 INTERVENTION_FUNCTIONS = {
     "test_intervention": test_intervention,
@@ -130,5 +162,6 @@ INTERVENTION_FUNCTIONS = {
     "posture_check": test_intervention,
     "perception_reframe": perception_reframe,
     "creation_interval": test_intervention,
-    "body_reorientation": body_reorientation
+    "body_reorientation": body_reorientation,
+    "memory_reflection": memory_reflection
 }
