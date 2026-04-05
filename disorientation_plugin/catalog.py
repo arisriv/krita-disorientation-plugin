@@ -9,17 +9,24 @@ INTERVENTION_CATALOG = {
             "control": "checkbox",
             "label": "Enable Mark Fading",
             "state_attr": "mark_fading_enabled"
-        }
-    ],
-    "Process + Temporality": [
+        },
         {
             "key": "canvas_toss",
             "title": "Canvas Toss",
             "description": "Introduces the possibility of abandoning the current canvas and beginning again.",
             "control": "button",
             "label": "Test Canvas Toss",
-            "state_attr": "canvas_toss_enabled"
+            "state_attr": "canvas_toss_enabled" # Currently unused, until change back to checkbox
         }
+    ],
+    "Process + Temporality": [
+        {
+            "key": "creation_interval",
+            "title": "Creation Interval",
+            "description": "TKTKTK",
+            "control": "button",
+            "label": "Test Creation Interval"
+        },
     ],
     "Artistic Milieu": [
         {
@@ -41,9 +48,16 @@ INTERVENTION_CATALOG = {
         {
             "key": "posture_check",
             "title": "Posture Check",
-            "description": "Interrupts the digital workflow with a brief prompt about bodily position and orientation.",
+            "description": "Interrupts the digital workflow with a brief prompt about bodily posture.",
             "control": "button",
             "label": "Test Posture Check"
-        }
+        },
+        {
+            "key": "body_reorientation",
+            "title": "Body Reorientation",
+            "description": "Interrupts digital workflow with a brief prompt on how to physically reorient your body and its orientation relative to your workspace and device.",
+            "control": "button",
+            "label": "Generate Body Reorientation Prompt"
+        },
     ]
 }

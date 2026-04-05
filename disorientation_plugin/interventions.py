@@ -5,6 +5,11 @@ from PyQt5.QtWidgets import QMessageBox
 from datetime import datetime
 from pathlib import Path
 import random
+from .dialogs import CountdownDialog
+
+# Keep references to open dialogs so they do not get garbage-collected
+# immediately after being shown.
+active_dialogs = []
 
 def test_intervention():
     QMessageBox.information(
@@ -12,6 +17,10 @@ def test_intervention():
         "Intervention",
         "Test intervention triggered!"
     )
+
+# =====================================================================
+# PERMANENCE + REVISION INTERVENTIONS
+# =====================================================================
 
 def canvas_toss():
     app = Krita.instance()
@@ -65,7 +74,6 @@ def canvas_toss():
 # ARTISTIC MILIEU INTERVENTIONS
 # =====================================================================
 
-
 def perception_reframe():
     prompts = [
         "Imagine this artwork will be viewed from twenty feet away.",
@@ -84,11 +92,43 @@ def perception_reframe():
         f"{prompt}\n\nMake at least one change to your artwork based on this new viewing context."
     )
 
+# =====================================================================
+# SOMAESTHETICS + PHYSICAL ENVIRONMENT INTERVENTIONS
+# =====================================================================
+
+def body_reorientation():
+    prompts = [
+        ("Rotate your tablet or device 90° and continue drawing.", 120),
+        ("Stand while drawing for the next minute.", 60),
+        ("Use your non-dominant hand for the next minute.", 60),
+        ("Lean back and observe the composition for 30 seconds before continuing.", 30),
+        ("Move farther from the canvas and make broader strokes for two minutes.", 120)
+    ]
+
+    # Randomly choose one prompt-duration pair.
+    prompt, duration = random.choice(prompts)
+
+    # Create the combined prompt + timer dialog.
+    dialog = CountdownDialog(
+        "Body Reorientation",
+        prompt,
+        duration
+    )
+
+    # Store the dialog so it stays open after this function ends.
+    active_dialogs.append(dialog)
+
+    # Show the dialog without blocking Krita, so the user can keep drawing
+    # while the timer runs.
+    dialog.show()
+
 # Registry mapping intervention keys to executable functions
 INTERVENTION_FUNCTIONS = {
     "test_intervention": test_intervention,
     "canvas_toss": canvas_toss,
     "scenius_prompt": test_intervention,
     "posture_check": test_intervention,
-    "perception_reframe": perception_reframe
+    "perception_reframe": perception_reframe,
+    "creation_interval": test_intervention,
+    "body_reorientation": body_reorientation
 }
