@@ -19,61 +19,21 @@ def test_intervention():
         "Test intervention triggered!"
     )
 
+def diagnose_actions():
+    app = Krita.instance()
+    all_presets = app.resources("preset")
+
+    output_path = Path.home() / "krita_actions_diagnostic.txt"
+    with open(output_path, "w") as f:
+        for name in sorted(all_presets.keys()):
+            if "erase" in name.lower():
+                f.write(name + "\n")
+
+    QMessageBox.information(None, "Diagnose", f"Written to:\n{output_path}")
+
 # =====================================================================
 # PROCESS + TEMPORALITY INTERVENTIONS
 # =====================================================================
-
-# TO REVISIT: not working as intended.
-def tool_restriction():
-    candidates = [
-        ("Fill Tool",    "KritaFill/KisToolFill",             30),
-        ("Color Picker", "KritaSelected/KisToolColorSampler", 30),
-        ("Crop Tool",    "KisToolCrop",                       30),
-    ]
-
-    tool_name, action_id, duration = random.choice(candidates)
-
-    app = Krita.instance()
-
-    # CHANGED: use app.action() directly — this is how Krita registers tool
-    # actions internally, findChildren on the QMainWindow does not reach them
-    action = app.action(action_id)
-
-    if action is None:
-        QMessageBox.warning(
-            None,
-            "Tool Restriction",
-            f"Could not locate action: {action_id}\nRestriction skipped."
-        )
-        return
-
-    action.setEnabled(False)
-
-    dialog = CountdownDialog(
-        "Tool Restriction",
-        f"The {tool_name} has been temporarily restricted.\nFind another way forward.",
-        duration
-    )
-
-    active_dialogs.append(dialog)
-    dialog.show()
-
-    QTimer.singleShot(duration * 1000, lambda: _restore_tool(action, dialog))
-
-def _restore_tool(action, dialog):
-    # Re-enable the previously restricted tool
-    action.setEnabled(True)
-
-    # Remove the dialog reference so it can be garbage collected
-    if dialog in active_dialogs:
-        active_dialogs.remove(dialog)
-
-    QMessageBox.information(
-        None,
-        "Tool Restriction Lifted",
-        "The restricted tool is now available again."
-    )
-
 
 # BRUSH RESTRICTION INTERVENTION
 def brush_restriction():
@@ -124,6 +84,7 @@ def brush_restriction():
     # Switch the user to the disorienting preset immediately
     view.setCurrentBrushPreset(disorienting_preset)
 
+    # QUESTION: is this long enough? too long? too short?
     duration = random.randint(240,420)
 
     # Set up a poll timer that checks every 300ms whether the user has
@@ -180,6 +141,218 @@ def _restore_brush(poll_timer, view, original_preset, dialog):
         None,
         "Brush Restriction Lifted",
         "Your original brush has been restored."
+    )
+
+
+# SUBTRACTIVE DRAWING INTERVENTION
+def subtractive_drawing():
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Subtractive Drawing", "No active Krita window.")
+        return
+
+    view = window.activeView()
+
+    if view is None:
+        QMessageBox.warning(None, "Subtractive Drawing", "No active view.")
+        return
+
+    # Store the user's current preset so we can restore it after
+    original_preset = view.currentBrushPreset()
+
+    if original_preset is None:
+        QMessageBox.warning(None, "Subtractive Drawing", "Could not read current brush preset.")
+        return
+
+    # Find all eraser presets by filtering for "erase" in the name
+    all_presets = app.resources("preset")
+    eraser_presets = [
+        preset for name, preset in all_presets.items()
+        if "erase" in name.lower()
+    ]
+
+    if not eraser_presets:
+        QMessageBox.warning(None, "Subtractive Drawing", "No eraser presets found.")
+        return
+
+    # Pick one eraser preset randomly and keep it fixed for the duration
+    eraser_preset = random.choice(eraser_presets)
+
+    # Switch to freehand brush tool and eraser preset immediately
+    brush_action = app.action("KritaShape/KisToolBrush")
+    if brush_action is None:
+        QMessageBox.warning(None, "Subtractive Drawing", "Could not find freehand brush action.")
+        return
+
+    brush_action.trigger()
+    view.setCurrentBrushPreset(eraser_preset)
+    view.setEraserMode(True)
+
+    eraser_preset_name = eraser_preset.name()
+    original_preset_name = original_preset.name()
+
+    duration = random.randint(240, 420)
+
+    # Poll every 300ms — unconditionally enforce brush tool, eraser preset,
+    # and eraser mode so the user cannot escape to any other tool or preset
+    poll_timer = QTimer()
+    poll_timer.setInterval(300)
+
+    state = {
+        "view": view,
+        "brush_action": brush_action,
+        "eraser_preset": eraser_preset,
+        "eraser_preset_name": eraser_preset_name,
+        "original_preset_name": original_preset_name,
+    }
+
+    def poll():
+        # Always force back to freehand brush tool
+        state["brush_action"].trigger()
+
+        # If user switched to a non-eraser preset, force back to the eraser preset.
+        # Allow switching freely between eraser presets.
+        current = state["view"].currentBrushPreset()
+        if current is not None and "erase" not in current.name().lower():  # CHANGED
+            state["view"].setCurrentBrushPreset(state["eraser_preset"])
+
+        # Always force eraser mode on since we can't reliably read its state
+        state["view"].setEraserMode(True)
+
+    poll_timer.timeout.connect(poll)
+    poll_timer.start()
+
+    dialog = CountdownDialog(
+        "Subtractive Drawing",
+        "You are in eraser-only mode.\nFind another way forward.",
+        duration
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    QTimer.singleShot(
+        duration * 1000,
+        lambda: _restore_subtractive(poll_timer, view, original_preset, dialog)
+    )
+
+
+def _restore_subtractive(poll_timer, view, original_preset, dialog):
+    # Stop polling
+    poll_timer.stop()
+
+    # Restore original preset and turn eraser mode off
+    view.setCurrentBrushPreset(original_preset)
+    view.setEraserMode(False)
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    QMessageBox.information(
+        None,
+        "Subtractive Drawing Lifted",
+        "Your original brush has been restored."
+    )
+
+
+# TOOL RESTRICTION INTERVENTION: to revisit, not working as intended
+def tool_restriction():
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Tool Restriction", "No active Krita window.")
+        return
+
+    view = window.activeView()
+
+    if view is None:
+        QMessageBox.warning(None, "Tool Restriction", "No active view.")
+        return
+
+    # All confirmed-found tool action IDs except the freehand brush,
+    # which is our neutral redirect target and should never be restricted
+    candidates = [
+        ("Fill Tool",        "KritaFill/KisToolFill"),
+        ("Color Picker",     "KritaSelected/KisToolColorSampler"),
+        ("Crop Tool",        "KisToolCrop"),
+        ("Line Tool",        "KritaShape/KisToolLine"),
+        ("Rectangle Tool",   "KritaShape/KisToolRectangle"),
+        ("Move Tool",        "KritaTransform/KisToolMove"),
+        ("Multibrush Tool",  "KritaShape/KisToolMultiBrush"),
+    ]
+
+    # Pick one tool to restrict at random
+    tool_name, action_id = random.choice(candidates)
+
+    # Get the action for the restricted tool and the freehand brush redirect
+    banned_action = app.action(action_id)
+    brush_action = app.action("KritaShape/KisToolBrush")
+
+    if banned_action is None or brush_action is None:
+        QMessageBox.warning(
+            None,
+            "Tool Restriction",
+            "Could not locate required actions. Restriction skipped."
+        )
+        return
+
+    # Trigger the freehand brush immediately as the starting redirect
+    brush_action.trigger()
+
+    duration = random.randint(240, 420)
+
+    # Poll every 300ms — if the banned tool's action gets triggered,
+    # immediately redirect back to the freehand brush
+    poll_timer = QTimer()
+    poll_timer.setInterval(300)
+
+    def poll():
+        # isChecked() didn't work, so instead we re-trigger the brush tool
+        # preemptively on every poll to keep pulling the user back.
+        # This is a blunt approach but reliable given API limitations.
+        pass
+
+    # Since we can't detect current tool state, we use triggered signal
+    # on the banned action to intercept and redirect
+    def on_banned_triggered():
+        # User triggered the restricted tool — bounce them back immediately
+        brush_action.trigger()
+
+    banned_action.triggered.connect(on_banned_triggered)  # ADDED
+
+    dialog = CountdownDialog(
+        "Tool Restriction",
+        f"The {tool_name} has been temporarily restricted.\nFind another way forward.",
+        duration
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    QTimer.singleShot(
+        duration * 1000,
+        lambda: _restore_tool(banned_action, brush_action, on_banned_triggered, dialog)
+    )
+
+
+def _restore_tool(banned_action, brush_action, on_banned_triggered, dialog):
+    # Disconnect the intercept signal so the tool works normally again
+    try:
+        banned_action.triggered.disconnect(on_banned_triggered)  # ADDED
+    except TypeError:
+        pass
+
+    # Clean up dialog reference
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    QMessageBox.information(
+        None,
+        "Tool Restriction Lifted",
+        "The restricted tool is now available again."
     )
 
 # =====================================================================
@@ -328,6 +501,8 @@ INTERVENTION_FUNCTIONS = {
     "creation_interval": test_intervention,
     "body_reorientation": body_reorientation,
     "memory_reflection": memory_reflection,
+    "brush_restriction": brush_restriction,
+    "diagnose_actions": diagnose_actions,
     "tool_restriction": tool_restriction,
-    "brush_restriction": brush_restriction
+    "subtractive_drawing": subtractive_drawing
 }
