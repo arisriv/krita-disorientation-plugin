@@ -1,7 +1,8 @@
 # Logic for creative interventions will go here.
 
 from krita import *
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QAction
+from PyQt5.QtCore import QTimer
 from datetime import datetime
 from pathlib import Path
 import random
@@ -16,6 +17,169 @@ def test_intervention():
         None,
         "Intervention",
         "Test intervention triggered!"
+    )
+
+# =====================================================================
+# PROCESS + TEMPORALITY INTERVENTIONS
+# =====================================================================
+
+# TO REVISIT: not working as intended.
+def tool_restriction():
+    candidates = [
+        ("Fill Tool",    "KritaFill/KisToolFill",             30),
+        ("Color Picker", "KritaSelected/KisToolColorSampler", 30),
+        ("Crop Tool",    "KisToolCrop",                       30),
+    ]
+
+    tool_name, action_id, duration = random.choice(candidates)
+
+    app = Krita.instance()
+
+    # CHANGED: use app.action() directly — this is how Krita registers tool
+    # actions internally, findChildren on the QMainWindow does not reach them
+    action = app.action(action_id)
+
+    if action is None:
+        QMessageBox.warning(
+            None,
+            "Tool Restriction",
+            f"Could not locate action: {action_id}\nRestriction skipped."
+        )
+        return
+
+    action.setEnabled(False)
+
+    dialog = CountdownDialog(
+        "Tool Restriction",
+        f"The {tool_name} has been temporarily restricted.\nFind another way forward.",
+        duration
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    QTimer.singleShot(duration * 1000, lambda: _restore_tool(action, dialog))
+
+def _restore_tool(action, dialog):
+    # Re-enable the previously restricted tool
+    action.setEnabled(True)
+
+    # Remove the dialog reference so it can be garbage collected
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    QMessageBox.information(
+        None,
+        "Tool Restriction Lifted",
+        "The restricted tool is now available again."
+    )
+
+
+# BRUSH RESTRICTION INTERVENTION
+def brush_restriction():
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Brush Restriction", "No active Krita window.")
+        return
+
+    view = window.activeView()
+
+    if view is None:
+        QMessageBox.warning(None, "Brush Restriction", "No active view.")
+        return
+
+    # Store the current preset as the one to ban for the duration
+    banned_preset = view.currentBrushPreset()
+
+    if banned_preset is None:
+        QMessageBox.warning(None, "Brush Restriction", "Could not read current brush preset.")
+        return
+
+    banned_name = banned_preset.name()
+
+    # Get all available presets as a dictionary of {name: resource}
+    all_presets = app.resources("preset")
+
+    # Filter out presets with names too similar to the banned one.
+    # We split both names into words and exclude any preset that shares
+    # a word with the banned preset name, case-insensitive.
+    banned_words = set(banned_name.lower().split())
+
+    candidates = []
+    for name, preset in all_presets.items():
+        preset_words = set(name.lower().split())
+        # If no words overlap, this preset is dissimilar enough to use
+        if not banned_words.intersection(preset_words):
+            candidates.append(preset)
+
+    if not candidates:
+        QMessageBox.warning(None, "Brush Restriction", "Could not find a dissimilar brush preset.")
+        return
+
+    # Pick one disorienting preset randomly and keep it fixed for the duration
+    disorienting_preset = random.choice(candidates)
+
+    # Switch the user to the disorienting preset immediately
+    view.setCurrentBrushPreset(disorienting_preset)
+
+    duration = random.randint(240,420)
+
+    # Set up a poll timer that checks every 300ms whether the user has
+    # switched back to the banned preset, and bounces them away if so
+    poll_timer = QTimer()
+    poll_timer.setInterval(300)
+
+    # Use a mutable container so the lambda can reference the timer
+    # and view without relying on closure-captured variables changing
+    state = {
+        "banned_name": banned_name,
+        "disorienting_preset": disorienting_preset,
+        "view": view,
+    }
+
+    def poll():
+        current = state["view"].currentBrushPreset()
+        if current is not None and current.name() == state["banned_name"]:
+            # User switched back to the banned preset — bounce them away
+            state["view"].setCurrentBrushPreset(state["disorienting_preset"])
+
+    poll_timer.timeout.connect(poll)
+    poll_timer.start()
+
+    # Show the countdown dialog for the duration
+    dialog = CountdownDialog(
+        "Brush Restriction",
+        f"Your brush has been temporarily restricted.\nFind another way forward.",
+        duration
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    # After the duration, stop polling and restore the original preset
+    QTimer.singleShot(
+        duration * 1000,
+        lambda: _restore_brush(poll_timer, view, banned_preset, dialog)
+    )
+
+
+def _restore_brush(poll_timer, view, original_preset, dialog):
+    # Stop the poll timer so we stop intercepting preset changes
+    poll_timer.stop()
+
+    # Restore the user's original preset
+    view.setCurrentBrushPreset(original_preset)
+
+    # Clean up the dialog reference
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    QMessageBox.information(
+        None,
+        "Brush Restriction Lifted",
+        "Your original brush has been restored."
     )
 
 # =====================================================================
@@ -163,5 +327,7 @@ INTERVENTION_FUNCTIONS = {
     "perception_reframe": perception_reframe,
     "creation_interval": test_intervention,
     "body_reorientation": body_reorientation,
-    "memory_reflection": memory_reflection
+    "memory_reflection": memory_reflection,
+    "tool_restriction": tool_restriction,
+    "brush_restriction": brush_restriction
 }

@@ -27,6 +27,20 @@ INTERVENTION_CATALOG = {
             "control": "button",
             "label": "Test Creation Interval"
         },
+        {
+            "key": "tool_restriction",
+            "title": "Tool Restriction",
+            "description": "Temporarily disables a randomly selected tool for a fixed duration. The tool is restored automatically when the timer expires.",
+            "control": "button",
+            "label": "Test Tool Restriction"
+        },
+        {
+            "key": "brush_restriction",
+            "title": "Brush Restriction",
+            "description": "Temporarily replaces your current brush with a different one. Attempting to switch back will redirect you to the replacement brush. Your original brush is restored when the timer expires.",
+            "control": "button",
+            "label": "Test Brush Restriction"
+        },
     ],
     "Artistic Milieu": [
         {
