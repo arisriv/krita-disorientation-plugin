@@ -26,26 +26,66 @@ def test_intervention(panel=None):
         "Test intervention triggered!"
     )
 
-def diagnose_actions(panel=None):
-    app = Krita.instance()
-    window = app.activeWindow()
-    view = window.activeView()
-    canvas = view.canvas()
+def _create_canvas_overlay():
+    from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+    from PyQt5.QtCore import Qt
 
+    # Find the main Krita window
+    qwin = _get_main_window()
+    if qwin is None:
+        return None
+
+    # Find the canvas viewport widget by name
+    view = qwin.findChild(QWidget, "view_0")
+    if view is None:
+        return None
+
+    # Create a frameless overlay widget parented to the canvas viewport.
+    # Parenting to view_0 means it moves with the canvas and closes with Krita.
+    overlay = QWidget(view)                                        # ADDED
+    overlay.setWindowFlags(Qt.FramelessWindowHint)                 # ADDED
+
+    # Semi-transparent dark tint — rgba(0, 0, 0, 120) is visible but
+    # still lets the artwork show through underneath
+    overlay.setStyleSheet("background-color: rgba(0, 0, 0, 120);") # ADDED
+
+    # Match the canvas viewport exactly
+    overlay.setGeometry(view.rect())                               # ADDED
+
+    # Raise it above the canvas so it intercepts mouse events
+    overlay.raise_()                                               # ADDED
+    overlay.show()                                                 # ADDED
+
+    return overlay                                                 # ADDED
+
+
+def _remove_canvas_overlay(overlay):
+    if overlay is not None:
+        overlay.hide()    # ADDED
+        overlay.deleteLater()  # ADDED
+
+
+def diagnose_actions(panel=None):
+    from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
     output_path = Path.home() / "krita_actions_diagnostic.txt"
     with open(output_path, "w") as f:
-        # Read current rotation
-        f.write(f"rotation before: {canvas.rotation()}\n")
-        
-        # Try setting a rotation of 45 degrees
-        canvas.setRotation(45)
-        f.write(f"rotation after setRotation(45): {canvas.rotation()}\n")
-        
-        # Restore
-        canvas.setRotation(0)
-        f.write(f"rotation after reset: {canvas.rotation()}\n")
-
+        for widget in QApplication.topLevelWidgets():
+            if isinstance(widget, QMainWindow):
+                view = widget.findChild(QWidget, "view_0")
+                f.write(f"view_0 found: {view is not None}\n")
+                if view is not None:
+                    f.write(f"view_0 geometry: {view.geometry()}\n")
+                    f.write(f"view_0 isVisible: {view.isVisible()}\n")
     QMessageBox.information(None, "Diagnose", f"Written to:\n{output_path}")
+
+def test_overlay(panel=None):
+    overlay = _create_canvas_overlay()
+
+    if overlay is None:
+        QMessageBox.warning(None, "Test Overlay", "Could not create overlay.")
+        return
+
+    QTimer.singleShot(10000, lambda: _remove_canvas_overlay(overlay))
 
 # =====================================================================
 # PROCESS + TEMPORALITY INTERVENTIONS
@@ -458,6 +498,65 @@ def _restore_tool(banned_action, brush_action, on_banned_triggered, dialog):
         "The restricted tool is now available again."
     )
 
+
+def creation_interval(panel=None):
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Creation Interval", "No active Krita window.")
+        return
+
+    doc = app.activeDocument()
+    if doc is None:
+        QMessageBox.warning(None, "Creation Interval", "No active document.")
+        return
+
+    prompts = [
+        "Step away from your work.\nLook at something far away for a moment.\nReturn when the timer expires.",
+        "Put down your stylus.\nWalk away from your screen.\nReturn when the timer expires.",
+        "Close your eyes and breathe.\nLet your mind wander away from the canvas.\nReturn when the timer expires.",
+        "Stand up and stretch.\nDon't think about your work.\nReturn when the timer expires.",
+        "Look away from all screens.\nGive your eyes and mind a rest.\nReturn when the timer expires.",
+    ]
+
+    prompt = random.choice(prompts)
+    duration = random.randint(15, 30)
+
+    # Block the canvas with an overlay
+    overlay = _create_canvas_overlay()  # ADDED
+
+    dialog = CountdownDialog(
+        "Creation Interval",
+        prompt,
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    dialog.countdown_finished.connect(
+        lambda: _restore_creation_interval(overlay, dialog)
+    )  # ADDED
+
+
+def _restore_creation_interval(overlay, dialog):
+    # Remove the canvas overlay so the user can paint again
+    _remove_canvas_overlay(overlay)  # ADDED
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Creation Interval",
+        "Your creation interval has ended.\nReturn to your work."
+    )
+
 # =====================================================================
 # PERMANENCE + REVISION INTERVENTIONS
 # =====================================================================
@@ -603,12 +702,13 @@ INTERVENTION_FUNCTIONS = {
     "scenius_prompt": test_intervention,
     "posture_check": test_intervention,
     "perception_reframe": perception_reframe,
-    "creation_interval": test_intervention,
+    "creation_interval": creation_interval,
     "body_reorientation": body_reorientation,
     "memory_reflection": memory_reflection,
     "brush_restriction": brush_restriction,
     "diagnose_actions": diagnose_actions,
     "tool_restriction": tool_restriction,
     "subtractive_drawing": subtractive_drawing,
-    "canvas_transformation": canvas_transformation
+    "canvas_transformation": canvas_transformation,
+    "test_overlay": test_overlay
 }

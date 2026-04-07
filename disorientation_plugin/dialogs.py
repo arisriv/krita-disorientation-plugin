@@ -2,12 +2,15 @@
 # creating circular imports between interventions and ui
 
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QFrame, QPushButton, QWidget  # ADDED
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 
 
 class CountdownDialog(QDialog):
+    countdown_finished = pyqtSignal()  # ADDED
+
     def __init__(self, title, message, duration_seconds, parent=None):
+        
         super().__init__(parent)
 
         self.time_left = duration_seconds
@@ -87,11 +90,11 @@ class CountdownDialog(QDialog):
         if self.time_left <= 0:
             self.timer.stop()
             self.timer_label.setText("Time is up.")
+            self.countdown_finished.emit()  # ADDED
             return
 
         self.timer_label.setText(self.format_time(self.time_left))
 
-        # Turn timer red in the final 15 seconds
         if self.time_left <= 15:
             self.timer_label.setStyleSheet("color: red;")
 

@@ -24,13 +24,20 @@ INTERVENTION_CATALOG = {
             "description": "",
             "control": "button",
             "label": "Run Diagnostics",
+        },
+        {
+            "key": "test_overlay",
+            "title": "Test Overlay",
+            "description": "Tests the canvas overlay in isolation.",
+            "control": "button",
+            "label": "Test Overlay",
         }
     ],
     "Process + Temporality": [
         {
             "key": "creation_interval",
             "title": "Creation Interval",
-            "description": "TKTKTK",
+            "description": "Temporarily blocks access to the canvas and prompts the artist to step away from their work. Canvas access is restored when the timer expires.",
             "control": "button",
             "label": "Test Creation Interval"
         },
