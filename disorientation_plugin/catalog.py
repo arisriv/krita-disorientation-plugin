@@ -33,11 +33,11 @@ INTERVENTION_CATALOG = {
             "label": "Run Diagnostics",
         },
         {
-            "key": "test_overlay",
-            "title": "Test Overlay",
-            "description": "Tests the canvas overlay in isolation.",
+            "key": "test_tool_overlay",
+            "title": "Test Tool Overlay",
+            "description": "Tests the tool overlay in isolation.",
             "control": "button",
-            "label": "Test Overlay",
+            "label": "Test Tool Overlay",
         }
     ],
     "Process + Temporality": [

@@ -26,6 +26,34 @@ def test_intervention(panel=None):
         "Test intervention triggered!"
     )
 
+def test_tool_overlay(panel=None):
+    from PyQt5.QtWidgets import QToolButton, QWidget
+
+    qwin = _get_main_window()
+    if qwin is None:
+        return
+
+    candidates = [
+        "KritaFill/KisToolFill",
+        "KritaSelected/KisToolColorSampler",
+        "KisToolCrop",
+        "KritaShape/KisToolLine",
+        "KritaShape/KisToolRectangle",
+        "KritaTransform/KisToolMove",
+        "KritaShape/KisToolMultiBrush",
+    ]
+
+    output_path = Path.home() / "krita_actions_diagnostic.txt"
+    with open(output_path, "w") as f:
+        for tool_id in candidates:
+            btn = qwin.findChild(QToolButton, tool_id)
+            if btn is not None:
+                f.write(f"{tool_id}: parent={btn.parent().objectName()}\n")
+            else:
+                f.write(f"{tool_id}: NOT FOUND\n")
+
+    QMessageBox.information(None, "Test", f"Written to:\n{output_path}")
+
 # Helper to block canvas through an overlaid window
 def _create_canvas_overlay():
     from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
@@ -402,6 +430,8 @@ def _restore_canvas_transformation(canvas, original_mirror, original_rotation, d
 
 # TOOL RESTRICTION INTERVENTION: to revisit, not working as intended
 def tool_restriction(panel=None):
+    from PyQt5.QtWidgets import QToolButton
+
     app = Krita.instance()
     window = app.activeWindow()
 
@@ -409,66 +439,69 @@ def tool_restriction(panel=None):
         QMessageBox.warning(None, "Tool Restriction", "No active Krita window.")
         return
 
-    view = window.activeView()
-
-    if view is None:
-        QMessageBox.warning(None, "Tool Restriction", "No active view.")
+    qwin = _get_main_window()
+    if qwin is None:
+        QMessageBox.warning(None, "Tool Restriction", "No main window found.")
         return
 
-    # All confirmed-found tool action IDs except the freehand brush,
-    # which is our neutral redirect target and should never be restricted
-    candidates = [
-        ("Fill Tool",        "KritaFill/KisToolFill"),
-        ("Color Picker",     "KritaSelected/KisToolColorSampler"),
-        ("Crop Tool",        "KisToolCrop"),
-        ("Line Tool",        "KritaShape/KisToolLine"),
-        ("Rectangle Tool",   "KritaShape/KisToolRectangle"),
-        ("Move Tool",        "KritaTransform/KisToolMove"),
-        ("Multibrush Tool",  "KritaShape/KisToolMultiBrush"),
+    # Tool categories — each is a display name and list of tool IDs
+    categories = [
+        (
+            "Fill Tools",
+            ["KritaFill/KisToolFill", "KritaSelected/KisToolColorSampler", "KritaFill/KisToolGradient"]
+        ),
+        (
+            "Transform Tools",
+            ["KritaTransform/KisToolMove", "KisToolCrop"]
+        ),
+        (
+            "Shape Tools",
+            ["KritaShape/KisToolLine", "KritaShape/KisToolRectangle", "KritaShape/KisToolMultiBrush"]
+        ),
+        (
+            "All Tools",
+            [
+                "KritaFill/KisToolFill", "KritaSelected/KisToolColorSampler", "KritaFill/KisToolGradient",
+                "KritaTransform/KisToolMove", "KisToolCrop",
+                "KritaShape/KisToolLine", "KritaShape/KisToolRectangle", "KritaShape/KisToolMultiBrush"
+            ]
+        ),
     ]
 
-    # Pick one tool to restrict at random
-    tool_name, action_id = random.choice(candidates)
+    # Weighted random selection — All Tools is rarest at 10%
+    category_name, tool_ids = random.choices(
+        categories,
+        weights=[30, 30, 30, 10]
+    )[0]
 
-    # Get the action for the restricted tool and the freehand brush redirect
-    banned_action = app.action(action_id)
+    # Switch to freehand brush immediately
     brush_action = app.action("KritaShape/KisToolBrush")
+    if brush_action is not None:
+        brush_action.trigger()
 
-    if banned_action is None or brush_action is None:
-        QMessageBox.warning(
-            None,
-            "Tool Restriction",
-            "Could not locate required actions. Restriction skipped."
-        )
+    # Create an overlay for each tool in the selected category
+    overlays = []
+    for tool_id in tool_ids:
+        tool_button = qwin.findChild(QToolButton, tool_id)
+        if tool_button is None:
+            continue
+        parent_widget = tool_button.parent()
+        overlay = QWidget(parent_widget)
+        overlay.setStyleSheet("background-color: rgba(0, 0, 0, 120);")
+        overlay.setGeometry(tool_button.geometry())
+        overlay.raise_()
+        overlay.show()
+        overlays.append(overlay)
+
+    if not overlays:
+        QMessageBox.warning(None, "Tool Restriction", "Could not find any tool buttons.")
         return
-
-    # Trigger the freehand brush immediately as the starting redirect
-    brush_action.trigger()
 
     duration = random.randint(240, 420)
 
-    # Poll every 300ms — if the banned tool's action gets triggered,
-    # immediately redirect back to the freehand brush
-    poll_timer = QTimer()
-    poll_timer.setInterval(300)
-
-    def poll():
-        # isChecked() didn't work, so instead we re-trigger the brush tool
-        # preemptively on every poll to keep pulling the user back.
-        # This is a blunt approach but reliable given API limitations.
-        pass
-
-    # Since we can't detect current tool state, we use triggered signal
-    # on the banned action to intercept and redirect
-    def on_banned_triggered():
-        # User triggered the restricted tool — bounce them back immediately
-        brush_action.trigger()
-
-    banned_action.triggered.connect(on_banned_triggered)  # ADDED
-
     dialog = CountdownDialog(
         "Tool Restriction",
-        f"The {tool_name} has been temporarily restricted.\nFind another way forward.",
+        f"Your {category_name} have been temporarily restricted.\nFind another way forward.",
         duration,
         parent=_get_main_window()
     )
@@ -476,27 +509,26 @@ def tool_restriction(panel=None):
     active_dialogs.append(dialog)
     dialog.show()
 
-    QTimer.singleShot(
-        duration * 1000,
-        lambda: _restore_tool(banned_action, brush_action, on_banned_triggered, dialog)
+    dialog.countdown_finished.connect(
+        lambda: _restore_tool_restriction(overlays, dialog)
     )
 
 
-def _restore_tool(banned_action, brush_action, on_banned_triggered, dialog):
-    # Disconnect the intercept signal so the tool works normally again
-    try:
-        banned_action.triggered.disconnect(on_banned_triggered)  # ADDED
-    except TypeError:
-        pass
+def _restore_tool_restriction(overlays, dialog):
+    # Remove all tool overlays
+    for overlay in overlays:
+        overlay.deleteLater()
 
-    # Clean up dialog reference
     if dialog in active_dialogs:
         active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
 
     QMessageBox.information(
         None,
         "Tool Restriction Lifted",
-        "The restricted tool is now available again."
+        "Your tools are now available again."
     )
 
 
@@ -763,6 +795,6 @@ INTERVENTION_FUNCTIONS = {
     "tool_restriction": tool_restriction,
     "subtractive_drawing": subtractive_drawing,
     "canvas_transformation": canvas_transformation,
-    "test_overlay": test_overlay,
-    "undo_restriction": undo_restriction
+    "test_tool_overlay": test_tool_overlay,
+    "undo_restriction": undo_restriction,
 }
