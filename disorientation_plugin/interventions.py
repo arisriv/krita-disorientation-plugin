@@ -12,14 +12,21 @@ from .dialogs import CountdownDialog
 # immediately after being shown.
 active_dialogs = []
 
-def test_intervention():
+def _get_main_window():
+    from PyQt5.QtWidgets import QApplication, QMainWindow  # ADDED
+    for widget in QApplication.topLevelWidgets():          # ADDED
+        if isinstance(widget, QMainWindow):                # ADDED
+            return widget                                  # ADDED
+    return None                                            # ADDED
+
+def test_intervention(panel=None):
     QMessageBox.information(
         None,
         "Intervention",
         "Test intervention triggered!"
     )
 
-def diagnose_actions():
+def diagnose_actions(panel=None):
     app = Krita.instance()
     all_presets = app.resources("preset")
 
@@ -36,7 +43,7 @@ def diagnose_actions():
 # =====================================================================
 
 # BRUSH RESTRICTION INTERVENTION
-def brush_restriction():
+def brush_restriction(panel=None):
     app = Krita.instance()
     window = app.activeWindow()
 
@@ -113,7 +120,8 @@ def brush_restriction():
     dialog = CountdownDialog(
         "Brush Restriction",
         f"Your brush has been temporarily restricted.\nFind another way forward.",
-        duration
+        duration,
+        parent=_get_main_window()
     )
 
     active_dialogs.append(dialog)
@@ -145,7 +153,7 @@ def _restore_brush(poll_timer, view, original_preset, dialog):
 
 
 # SUBTRACTIVE DRAWING INTERVENTION
-def subtractive_drawing():
+def subtractive_drawing(panel=None):
     app = Krita.instance()
     window = app.activeWindow()
 
@@ -227,7 +235,8 @@ def subtractive_drawing():
     dialog = CountdownDialog(
         "Subtractive Drawing",
         "You are in eraser-only mode.\nFind another way forward.",
-        duration
+        duration,
+        parent=_get_main_window()
     )
 
     active_dialogs.append(dialog)
@@ -258,7 +267,7 @@ def _restore_subtractive(poll_timer, view, original_preset, dialog):
 
 
 # TOOL RESTRICTION INTERVENTION: to revisit, not working as intended
-def tool_restriction():
+def tool_restriction(panel=None):
     app = Krita.instance()
     window = app.activeWindow()
 
@@ -326,7 +335,8 @@ def tool_restriction():
     dialog = CountdownDialog(
         "Tool Restriction",
         f"The {tool_name} has been temporarily restricted.\nFind another way forward.",
-        duration
+        duration,
+        parent=_get_main_window()
     )
 
     active_dialogs.append(dialog)
@@ -359,7 +369,7 @@ def _restore_tool(banned_action, brush_action, on_banned_triggered, dialog):
 # PERMANENCE + REVISION INTERVENTIONS
 # =====================================================================
 
-def canvas_toss():
+def canvas_toss(panel=None):
     app = Krita.instance()
     doc = app.activeDocument()
 
@@ -411,7 +421,7 @@ def canvas_toss():
 # ARTISTIC MILIEU INTERVENTIONS
 # =====================================================================
 
-def perception_reframe():
+def perception_reframe(panel=None):
     prompts = [
         "Imagine this artwork will be viewed from twenty feet away.",
         "Imagine this artwork will appear briefly in a fast-scrolling social media feed.",
@@ -433,7 +443,7 @@ def perception_reframe():
 # SOMAESTHETICS + PHYSICAL ENVIRONMENT INTERVENTIONS
 # =====================================================================
 
-def body_reorientation():
+def body_reorientation(panel=None):
     prompts = [
         ("Rotate your tablet or device 90° and continue drawing.", 120),
         ("Stand while drawing for the next minute.", 60),
@@ -449,7 +459,8 @@ def body_reorientation():
     dialog = CountdownDialog(
         "Body Reorientation",
         prompt,
-        duration
+        duration,
+        parent=_get_main_window()
     )
 
     # Store the dialog so it stays open after this function ends.
@@ -460,7 +471,7 @@ def body_reorientation():
     dialog.show()
 
 
-def memory_reflection():
+def memory_reflection(panel=None):
     # TO ADD FUNCTIONALITY FOR BLOCKING EDITS WHILE TIMER
     prompts = [
         ("Think of a place you lived as a child. Sit with that memory before returning to the canvas.", 45),
@@ -484,7 +495,8 @@ def memory_reflection():
     dialog = CountdownDialog(
         "Memory-Based Reflection",
         prompt,
-        duration
+        duration,
+        parent=_get_main_window()
     )
 
     # Keep a reference so the dialog stays alive after this function ends

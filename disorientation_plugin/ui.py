@@ -265,4 +265,4 @@ class DisorientationUI(QWidget):
         intervention_fn = INTERVENTION_FUNCTIONS.get(intervention_key)
 
         if intervention_fn is not None:
-            intervention_fn()
+            intervention_fn(panel=self)

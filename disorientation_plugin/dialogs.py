@@ -7,8 +7,8 @@ from PyQt5.QtGui import QFont
 
 
 class CountdownDialog(QDialog):
-    def __init__(self, title, message, duration_seconds):
-        super().__init__()
+    def __init__(self, title, message, duration_seconds, parent=None):
+        super().__init__(parent)
 
         self.time_left = duration_seconds
         self.setWindowTitle(title)
@@ -100,3 +100,12 @@ class CountdownDialog(QDialog):
         minutes = seconds // 60
         secs = seconds % 60
         return f"{minutes:02d}:{secs:02d}"
+    
+    def closeEvent(self, event):
+        # Block closing while countdown is active
+        if self.timer.isActive():
+            event.ignore()
+            self.show()
+        else:
+            self.timer.stop()
+            super().closeEvent(event)
