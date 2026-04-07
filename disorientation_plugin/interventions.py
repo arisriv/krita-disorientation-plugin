@@ -28,13 +28,16 @@ def test_intervention(panel=None):
 
 def diagnose_actions(panel=None):
     app = Krita.instance()
-    all_presets = app.resources("preset")
+    window = app.activeWindow()
+    view = window.activeView()
+    canvas = view.canvas()
 
     output_path = Path.home() / "krita_actions_diagnostic.txt"
     with open(output_path, "w") as f:
-        for name in sorted(all_presets.keys()):
-            if "erase" in name.lower():
-                f.write(name + "\n")
+        f.write(f"mirror: {canvas.mirror()}\n")
+
+        action = app.action("mirror_canvas")
+        f.write(f"mirror_canvas action found: {action is not None}\n")
 
     QMessageBox.information(None, "Diagnose", f"Written to:\n{output_path}")
 
