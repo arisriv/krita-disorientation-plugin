@@ -55,6 +55,13 @@ INTERVENTION_CATALOG = {
             "control": "button",
             "label": "Test Subtractive Drawing"
         },
+        {
+            "key": "canvas_transformation",
+            "title": "Canvas Transformation",
+            "description": "Temporarily applies a random transformation to the canvas — mirroring, rotation, or both. The canvas is restored to its original state when the timer expires.",
+            "control": "button",
+            "label": "Test Canvas Transformation"
+        }
     ],
     "Artistic Milieu": [
         {

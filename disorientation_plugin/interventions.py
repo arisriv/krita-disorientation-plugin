@@ -34,10 +34,16 @@ def diagnose_actions(panel=None):
 
     output_path = Path.home() / "krita_actions_diagnostic.txt"
     with open(output_path, "w") as f:
-        f.write(f"mirror: {canvas.mirror()}\n")
-
-        action = app.action("mirror_canvas")
-        f.write(f"mirror_canvas action found: {action is not None}\n")
+        # Read current rotation
+        f.write(f"rotation before: {canvas.rotation()}\n")
+        
+        # Try setting a rotation of 45 degrees
+        canvas.setRotation(45)
+        f.write(f"rotation after setRotation(45): {canvas.rotation()}\n")
+        
+        # Restore
+        canvas.setRotation(0)
+        f.write(f"rotation after reset: {canvas.rotation()}\n")
 
     QMessageBox.information(None, "Diagnose", f"Written to:\n{output_path}")
 
@@ -266,6 +272,90 @@ def _restore_subtractive(poll_timer, view, original_preset, dialog):
         None,
         "Subtractive Drawing Lifted",
         "Your original brush has been restored."
+    )
+
+# CANVAS TRANSFORMATION INTERVENTION
+def canvas_transformation(panel=None):
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Canvas Transformation", "No active Krita window.")
+        return
+
+    view = window.activeView()
+
+    if view is None:
+        QMessageBox.warning(None, "Canvas Transformation", "No active view.")
+        return
+
+    canvas = view.canvas()
+
+    # Store original state so we can restore exactly after the timer
+    original_mirror = canvas.mirror()
+    original_rotation = canvas.rotation()
+
+    # Weighted random choice between three transformation types:
+    # 25% mirror only, 25% rotation only, 50% both
+    transformation = random.choices(
+        ["mirror", "rotation", "both"],
+        weights=[25, 25, 50]
+    )[0]
+
+    # Pick a random angle between 35 and 145 degrees, excluding the range
+    # 80-100 degrees to avoid near-90 which feels too orderly, and we also
+    # pick from both positive and negative to get left and right tilts
+    angle_pool = list(range(35, 80)) + list(range(100, 145))
+    angle = random.choice(angle_pool)
+
+    # Randomly apply positive or negative rotation for more variance
+    if random.random() < 0.5:
+        angle = -angle
+
+    # Apply the chosen transformation
+    if transformation == "mirror":
+        canvas.setMirror(not original_mirror)  # ADDED: flip mirror state
+    elif transformation == "rotation":
+        canvas.setRotation(angle)              # ADDED: apply rotation
+    elif transformation == "both":
+        canvas.setMirror(not original_mirror)  # ADDED
+        canvas.setRotation(angle)              # ADDED
+
+    duration = random.randint(180, 300)
+
+    dialog = CountdownDialog(
+        "Canvas Transformation",
+        "Your canvas has been transformed.\nFind another way forward.",
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    QTimer.singleShot(
+        duration * 1000,
+        lambda: _restore_canvas_transformation(
+            canvas, original_mirror, original_rotation, dialog
+        )
+    )
+
+
+def _restore_canvas_transformation(canvas, original_mirror, original_rotation, dialog):
+    # Restore canvas to exactly its pre-intervention state
+    canvas.setMirror(original_mirror)
+    canvas.setRotation(original_rotation)
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Canvas Transformation Lifted",
+        "Your canvas has been restored."
     )
 
 
@@ -519,5 +609,6 @@ INTERVENTION_FUNCTIONS = {
     "brush_restriction": brush_restriction,
     "diagnose_actions": diagnose_actions,
     "tool_restriction": tool_restriction,
-    "subtractive_drawing": subtractive_drawing
+    "subtractive_drawing": subtractive_drawing,
+    "canvas_transformation": canvas_transformation
 }
