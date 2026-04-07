@@ -19,6 +19,13 @@ INTERVENTION_CATALOG = {
             "state_attr": "canvas_toss_enabled" # Currently unused, until change back to checkbox
         },
         {
+            "key": "undo_restriction",
+            "title": "Undo Restriction",
+            "description": "Temporarily blocks access to the undo and redo toolbar buttons for a fixed duration. Restored when the timer expires.",
+            "control": "button",
+            "label": "Test Undo Restriction"
+        },
+        {
             "key": "diagnose_actions",
             "title": "Diagnostic",
             "description": "",

@@ -26,6 +26,7 @@ def test_intervention(panel=None):
         "Test intervention triggered!"
     )
 
+# Helper to block canvas through an overlaid window
 def _create_canvas_overlay():
     from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
     from PyQt5.QtCore import Qt
@@ -609,6 +610,58 @@ def canvas_toss(panel=None):
         f"Old canvas saved to:\n{backup_path}\n\nA new blank canvas has been opened."
     )
 
+# To figure out: block ctrl+Z
+def undo_restriction(panel=None):
+    from PyQt5.QtWidgets import QWidget
+
+    qwin = _get_main_window()
+    if qwin is None:
+        QMessageBox.warning(None, "Undo Restriction", "No main window found.")
+        return
+
+    toolbar = qwin.findChild(QWidget, "editToolBar")
+    if toolbar is None:
+        QMessageBox.warning(None, "Undo Restriction", "Could not find edit toolbar.")
+        return
+
+    # Create overlay over the toolbar to block undo/redo button clicks
+    overlay = QWidget(toolbar)
+    overlay.setStyleSheet("background-color: rgba(0, 0, 0, 120);")
+    overlay.setGeometry(toolbar.rect())
+    overlay.raise_()
+    overlay.show()
+
+    duration = random.randint(120, 180)
+
+    dialog = CountdownDialog(
+        "Undo Restriction",
+        "Undo and redo are temporarily restricted.\nCommit to your marks.",
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    dialog.countdown_finished.connect(
+        lambda: _restore_undo_restriction(overlay, dialog)
+    )
+
+def _restore_undo_restriction(overlay, dialog):
+    overlay.deleteLater()
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Undo Restriction Lifted",
+        "Undo and redo are available again."
+    )
+
 # =====================================================================
 # ARTISTIC MILIEU INTERVENTIONS
 # =====================================================================
@@ -710,5 +763,6 @@ INTERVENTION_FUNCTIONS = {
     "tool_restriction": tool_restriction,
     "subtractive_drawing": subtractive_drawing,
     "canvas_transformation": canvas_transformation,
-    "test_overlay": test_overlay
+    "test_overlay": test_overlay,
+    "undo_restriction": undo_restriction
 }
