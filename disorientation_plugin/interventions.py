@@ -26,34 +26,6 @@ def test_intervention(panel=None):
         "Test intervention triggered!"
     )
 
-def test_tool_overlay(panel=None):
-    from PyQt5.QtWidgets import QToolButton, QWidget
-
-    qwin = _get_main_window()
-    if qwin is None:
-        return
-
-    candidates = [
-        "KritaFill/KisToolFill",
-        "KritaSelected/KisToolColorSampler",
-        "KisToolCrop",
-        "KritaShape/KisToolLine",
-        "KritaShape/KisToolRectangle",
-        "KritaTransform/KisToolMove",
-        "KritaShape/KisToolMultiBrush",
-    ]
-
-    output_path = Path.home() / "krita_actions_diagnostic.txt"
-    with open(output_path, "w") as f:
-        for tool_id in candidates:
-            btn = qwin.findChild(QToolButton, tool_id)
-            if btn is not None:
-                f.write(f"{tool_id}: parent={btn.parent().objectName()}\n")
-            else:
-                f.write(f"{tool_id}: NOT FOUND\n")
-
-    QMessageBox.information(None, "Test", f"Written to:\n{output_path}")
-
 # Helper to block canvas through an overlaid window
 def _create_canvas_overlay():
     from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
@@ -95,16 +67,39 @@ def _remove_canvas_overlay(overlay):
 
 
 def diagnose_actions(panel=None):
-    from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+    app = Krita.instance()
+    doc = app.activeDocument()
+
+    if doc is None:
+        QMessageBox.warning(None, "Diagnose", "No active document.")
+        return
+
     output_path = Path.home() / "krita_actions_diagnostic.txt"
     with open(output_path, "w") as f:
-        for widget in QApplication.topLevelWidgets():
-            if isinstance(widget, QMainWindow):
-                view = widget.findChild(QWidget, "view_0")
-                f.write(f"view_0 found: {view is not None}\n")
-                if view is not None:
-                    f.write(f"view_0 geometry: {view.geometry()}\n")
-                    f.write(f"view_0 isVisible: {view.isVisible()}\n")
+        # Check active node
+        current = doc.activeNode()
+        f.write(f"current node: {current.name()}\n")
+
+        # Check if we can create a paint layer
+        new_layer = doc.createNode("Mark Fading Test", "paintlayer")
+        f.write(f"new layer created: {new_layer is not None}\n")
+
+        # Insert it above current layer
+        root = doc.rootNode()
+        root.addChildNode(new_layer, current)
+        f.write(f"layer inserted\n")
+
+        # Set it as active
+        doc.setActiveNode(new_layer)
+        f.write(f"active node after set: {doc.activeNode().name()}\n")
+
+        # Check opacity
+        new_layer.setOpacity(128)
+        f.write(f"opacity after set: {new_layer.opacity()}\n")
+
+        # Check mergeDown exists
+        f.write(f"has mergeDown: {hasattr(new_layer, 'mergeDown')}\n")
+
     QMessageBox.information(None, "Diagnose", f"Written to:\n{output_path}")
 
 def test_overlay(panel=None):
@@ -344,6 +339,7 @@ def _restore_subtractive(poll_timer, view, original_preset, dialog):
     )
 
 # CANVAS TRANSFORMATION INTERVENTION
+
 def canvas_transformation(panel=None):
     app = Krita.instance()
     window = app.activeWindow()
@@ -694,6 +690,128 @@ def _restore_undo_restriction(overlay, dialog):
         "Undo and redo are available again."
     )
 
+# MARK FADING INTERVENTION
+
+def mark_fading(panel=None):
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Mark Fading", "No active Krita window.")
+        return
+
+    view = window.activeView()
+    if view is None:
+        QMessageBox.warning(None, "Mark Fading", "No active view.")
+        return
+
+    doc = app.activeDocument()
+    if doc is None:
+        QMessageBox.warning(None, "Mark Fading", "No active document.")
+        return
+
+    original_node = doc.activeNode()
+    if original_node is None:
+        QMessageBox.warning(None, "Mark Fading", "No active layer found.")
+        return
+
+    # Create a new paint layer above the current one
+    fading_layer = doc.createNode("Mark Fading", "paintlayer")
+    root = doc.rootNode()
+    root.addChildNode(fading_layer, original_node)
+
+    # Set the new layer as active so the user paints on it
+    doc.setActiveNode(fading_layer)
+    doc.refreshProjection()
+
+    # Random duration 4-7 mins
+    duration = random.randint(240, 420)
+
+    # Target opacity is random between 0 and 49 out of 255
+    target_opacity = int(random.randint(0, 49) * 255 / 100)
+
+    # Poll every 300ms to keep the fading layer active
+    poll_timer = QTimer()
+    poll_timer.setInterval(300)
+
+    state = {
+        "doc": doc,
+        "fading_layer": fading_layer,
+    }
+
+    def poll():
+        # Only job during painting: keep fading layer active
+        if state["doc"].activeNode() != state["fading_layer"]:
+            state["doc"].setActiveNode(state["fading_layer"])
+
+    poll_timer.timeout.connect(poll)
+    poll_timer.start()
+
+    dialog = CountdownDialog(
+        "Mark Fading",
+        "Continue working on your canvas.",
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    dialog.countdown_finished.connect(
+        lambda: _begin_mark_fade(poll_timer, doc, fading_layer, dialog, target_opacity)
+    )
+
+def _begin_mark_fade(poll_timer, doc, fading_layer, dialog, target_opacity):
+    poll_timer.stop()
+
+    # Block canvas during fade so user can't paint while opacity is changing
+    fade_overlay = _create_canvas_overlay()  # ADDED
+
+    # Fade from 255 to target_opacity over 2 seconds
+    # 10 steps at 200ms each = 2 seconds total
+    fade_steps = 10
+    step_size = (255 - target_opacity) / fade_steps
+    state = {"steps_done": 0}
+
+    fade_timer = QTimer()
+    fade_timer.setInterval(200)  # CHANGED: 200ms per step
+
+    def fade_step():
+        state["steps_done"] += 1
+        current_opacity = max(
+            int(255 - step_size * state["steps_done"]),
+            target_opacity
+        )
+        fading_layer.setOpacity(current_opacity)
+        doc.refreshProjection()
+
+        if state["steps_done"] >= fade_steps:
+            fade_timer.stop()
+            _restore_mark_fading(doc, fading_layer, dialog, fade_overlay)  # CHANGED
+
+    fade_timer.timeout.connect(fade_step)
+    fade_timer.start()
+
+
+def _restore_mark_fading(doc, fading_layer, dialog, fade_overlay=None):
+    fading_layer.mergeDown()
+    doc.refreshProjection()
+
+    # Remove the fade overlay now that merge is done
+    _remove_canvas_overlay(fade_overlay)  # ADDED
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Mark Fading Complete",
+        "Your faded marks have been merged into the canvas."
+    )
+
 # =====================================================================
 # ARTISTIC MILIEU INTERVENTIONS
 # =====================================================================
@@ -795,6 +913,6 @@ INTERVENTION_FUNCTIONS = {
     "tool_restriction": tool_restriction,
     "subtractive_drawing": subtractive_drawing,
     "canvas_transformation": canvas_transformation,
-    "test_tool_overlay": test_tool_overlay,
     "undo_restriction": undo_restriction,
+    "mark_fading": mark_fading
 }

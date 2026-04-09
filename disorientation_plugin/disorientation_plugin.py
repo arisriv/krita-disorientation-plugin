@@ -6,7 +6,7 @@ from .ui import DisorientationUI
 
 class DisorientationPlugin(Extension):
     def __init__(self, parent):
-        super().__init__()
+        super().__init__(parent)
         self.mark_fading_enabled = False
         self.canvas_toss_enabled = False
 

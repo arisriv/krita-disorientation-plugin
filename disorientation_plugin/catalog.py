@@ -5,10 +5,9 @@ INTERVENTION_CATALOG = {
         {
             "key": "mark_fading",
             "title": "Mark Fading",
-            "description": "Gradually destabilizes the permanence of marks over time. For now, this is a stored toggle only.",
-            "control": "checkbox",
+            "description": "Creates a new layer for the artist to work on. Over time, the layer's opacity gradually fades. The faded layer is merged down when the intervention ends.",
+            "control": "button",
             "label": "Enable Mark Fading",
-            "state_attr": "mark_fading_enabled"
         },
         {
             "key": "canvas_toss",
