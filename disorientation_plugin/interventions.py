@@ -812,6 +812,125 @@ def _restore_mark_fading(doc, fading_layer, dialog, fade_overlay=None):
         "Your faded marks have been merged into the canvas."
     )
 
+# ANALOG REVISION INTERVENTION
+
+def analog_revision(panel=None):
+    from PyQt5.QtCore import QObject, QEvent
+    from PyQt5.QtGui import QKeySequence
+    from PyQt5.QtWidgets import QApplication, QWidget
+
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Analog Revision", "No active Krita window.")
+        return
+
+    view = window.activeView()
+    if view is None:
+        QMessageBox.warning(None, "Analog Revision", "No active view.")
+        return
+
+    qwin = _get_main_window()
+    if qwin is None:
+        QMessageBox.warning(None, "Analog Revision", "No main window found.")
+        return
+
+    # Store original preset so we can bounce back to it if user switches to eraser
+    original_preset = view.currentBrushPreset()
+
+    # --- Block Ctrl+Z via ShortcutOverride ---
+    class UndoBlocker(QObject):
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.ShortcutOverride or event.type() == QEvent.KeyPress:
+                seq_int = int(event.modifiers()) | event.key()
+                seq = QKeySequence(seq_int)
+                undo_action = Krita.instance().action("edit_undo")
+                if undo_action and seq == undo_action.shortcuts()[0]:
+                    event.accept()
+                    return True
+            return super().eventFilter(obj, event)
+
+    blocker = UndoBlocker(QApplication.instance())
+    QApplication.instance().installEventFilter(blocker)
+
+    # --- Cover undo/redo toolbar buttons ---
+    toolbar = qwin.findChild(QWidget, "editToolBar")
+    toolbar_overlay = None
+    if toolbar is not None:
+        toolbar_overlay = QWidget(toolbar)
+        toolbar_overlay.setStyleSheet("background-color: rgba(0, 0, 0, 120);")
+        toolbar_overlay.setGeometry(toolbar.rect())
+        toolbar_overlay.raise_()
+        toolbar_overlay.show()
+
+    # --- Poll to block eraser mode and eraser presets ---
+    brush_action = app.action("KritaShape/KisToolBrush")
+
+    poll_timer = QTimer()
+    poll_timer.setInterval(300)
+
+    state = {
+        "view": view,
+        "brush_action": brush_action,
+        "original_preset": original_preset,
+    }
+
+    def poll():
+        # Unconditionally force eraser mode off and stay on brush tool
+        state["view"].setEraserMode(False)
+        if state["brush_action"] is not None:
+            state["brush_action"].trigger()
+        # If user switched to an eraser preset, bounce back to original
+        current = state["view"].currentBrushPreset()
+        if current is not None and "erase" in current.name().lower():
+            state["view"].setCurrentBrushPreset(state["original_preset"])
+
+    poll_timer.timeout.connect(poll)
+    poll_timer.start()
+
+    duration = random.randint(180, 420)  # 3-7 minutes
+
+    dialog = CountdownDialog(
+        "Analog Revision",
+        "Undo and erasing are temporarily restricted.\nCommit to your marks.",
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    dialog.countdown_finished.connect(
+        lambda: _restore_analog_revision(blocker, toolbar_overlay, poll_timer, dialog)
+    )
+
+
+def _restore_analog_revision(blocker, toolbar_overlay, poll_timer, dialog):
+    from PyQt5.QtWidgets import QApplication
+
+    # Remove Ctrl+Z blocker
+    QApplication.instance().removeEventFilter(blocker)
+
+    # Remove toolbar overlay
+    if toolbar_overlay is not None:
+        toolbar_overlay.deleteLater()
+
+    # Stop eraser poll
+    poll_timer.stop()
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Analog Revision Lifted",
+        "Undo and erasing are available again."
+    )
+    
 # =====================================================================
 # ARTISTIC MILIEU INTERVENTIONS
 # =====================================================================
@@ -914,5 +1033,6 @@ INTERVENTION_FUNCTIONS = {
     "subtractive_drawing": subtractive_drawing,
     "canvas_transformation": canvas_transformation,
     "undo_restriction": undo_restriction,
-    "mark_fading": mark_fading
+    "mark_fading": mark_fading,
+    "analog_revision": analog_revision
 }

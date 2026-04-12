@@ -25,6 +25,13 @@ INTERVENTION_CATALOG = {
             "label": "Test Undo Restriction"
         },
         {
+            "key": "analog_revision",
+            "title": "Analog Revision",
+            "description": "Temporarily blocks undo, redo, and erasing. You must commit to your marks for the duration.",
+            "control": "button",
+            "label": "Start Analog Revision"
+        },
+        {
             "key": "diagnose_actions",
             "title": "Diagnostic",
             "description": "",
