@@ -32,6 +32,13 @@ INTERVENTION_CATALOG = {
             "label": "Start Analog Revision"
         },
         {
+            "key": "locked_marks",
+            "title": "Locked Marks",
+            "description": "Creates a new layer for you to work on. When the timer expires, the layer is permanently locked — its marks cannot be erased or undone.",
+            "control": "button",
+            "label": "Start Locked Marks"
+        },
+        {
             "key": "diagnose_actions",
             "title": "Diagnostic",
             "description": "",

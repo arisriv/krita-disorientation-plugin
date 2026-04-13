@@ -930,7 +930,100 @@ def _restore_analog_revision(blocker, toolbar_overlay, poll_timer, dialog):
         "Analog Revision Lifted",
         "Undo and erasing are available again."
     )
-    
+
+
+# LOCKED MARKS INTERVENTION
+def locked_marks(panel=None):
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Locked Marks", "No active Krita window.")
+        return
+
+    view = window.activeView()
+    if view is None:
+        QMessageBox.warning(None, "Locked Marks", "No active view.")
+        return
+
+    doc = app.activeDocument()
+    if doc is None:
+        QMessageBox.warning(None, "Locked Marks", "No active document.")
+        return
+
+    original_node = doc.activeNode()
+    if original_node is None:
+        QMessageBox.warning(None, "Locked Marks", "No active layer found.")
+        return
+
+    # Create a new paint layer above the current one
+    locked_layer = doc.createNode("Locked Marks", "paintlayer")
+    root = doc.rootNode()
+    root.addChildNode(locked_layer, original_node)
+
+    # Set the new layer as active so the user paints on it
+    doc.setActiveNode(locked_layer)
+    doc.refreshProjection()
+
+    duration = random.randint(15, 30)  # 4-7 minutes, 15 TO 30 FOR TESTING RN
+
+    # Poll every 300ms to keep the locked marks layer active
+    poll_timer = QTimer()
+    poll_timer.setInterval(300)
+
+    state = {
+        "doc": doc,
+        "locked_layer": locked_layer,
+    }
+
+    def poll():
+        if state["doc"].activeNode() != state["locked_layer"]:
+            state["doc"].setActiveNode(state["locked_layer"])
+
+    poll_timer.timeout.connect(poll)
+    poll_timer.start()
+
+    dialog = CountdownDialog(
+        "Locked Marks",
+        "Paint on this layer.\nWhen the timer expires, your marks will be permanently locked.",
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    dialog.countdown_finished.connect(
+        lambda: _restore_locked_marks(poll_timer, doc, locked_layer, original_node, dialog)
+    )
+
+
+def _restore_locked_marks(poll_timer, doc, locked_layer, original_node, dialog):
+    poll_timer.stop()
+
+    # Lock the layer permanently
+    locked_layer.setLocked(True)
+    doc.refreshProjection()
+
+    # Create a new blank layer above the locked one so user can paint freely
+    new_layer = doc.createNode("Paint Layer", "paintlayer")  # ADDED
+    root = doc.rootNode()                                     # ADDED
+    root.addChildNode(new_layer, locked_layer)                # ADDED: insert above locked layer
+    doc.setActiveNode(new_layer)                              # ADDED: switch to new layer
+    doc.refreshProjection()                                   # ADDED
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Marks Locked",
+        "Your marks have been permanently locked.\nA new layer has been created above them."
+    )
+
 # =====================================================================
 # ARTISTIC MILIEU INTERVENTIONS
 # =====================================================================
@@ -1034,5 +1127,6 @@ INTERVENTION_FUNCTIONS = {
     "canvas_transformation": canvas_transformation,
     "undo_restriction": undo_restriction,
     "mark_fading": mark_fading,
-    "analog_revision": analog_revision
+    "analog_revision": analog_revision,
+    "locked_marks": locked_marks
 }
