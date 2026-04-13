@@ -13,6 +13,10 @@ class CountdownDialog(QDialog):
         
         super().__init__(parent)
 
+        self.setWindowFlags(
+            self.windowFlags() | Qt.WindowStaysOnTopHint  # ADDED
+        )
+
         self.time_left = duration_seconds
         self.setWindowTitle(title)
         self.setMinimumWidth(320)
@@ -90,7 +94,9 @@ class CountdownDialog(QDialog):
         if self.time_left <= 0:
             self.timer.stop()
             self.timer_label.setText("Time is up.")
-            self.countdown_finished.emit()  # ADDED
+            self.countdown_finished.emit()
+            # Auto-close after 10 seconds
+            QTimer.singleShot(10000, self.accept)  # ADDED
             return
 
         self.timer_label.setText(self.format_time(self.time_left))

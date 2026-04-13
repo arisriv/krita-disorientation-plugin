@@ -44,20 +44,6 @@ INTERVENTION_CATALOG = {
             "description": "Gives you a small budget of undo and erase actions. Once spent, undo and erasing are fully restricted for the remainder of the duration.",
             "control": "button",
             "label": "Start Undo/Erase Bank"
-        },
-        {
-            "key": "diagnose_actions",
-            "title": "Diagnostic",
-            "description": "",
-            "control": "button",
-            "label": "Run Diagnostics",
-        },
-        {
-            "key": "test_tool_overlay",
-            "title": "Test Tool Overlay",
-            "description": "Tests the tool overlay in isolation.",
-            "control": "button",
-            "label": "Test Tool Overlay",
         }
     ],
     "Process + Temporality": [

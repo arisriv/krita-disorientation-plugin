@@ -65,40 +65,6 @@ def _remove_canvas_overlay(overlay):
         overlay.hide()    # ADDED
         overlay.deleteLater()  # ADDED
 
-def diagnose_actions(panel=None):
-    from PyQt5.QtWidgets import QWidget
-    from PyQt5.QtCore import Qt
-
-    qwin = _get_main_window()
-    if qwin is None:
-        return
-
-    view = qwin.findChild(QWidget, "view_0")
-    if view is None:
-        return
-
-    # White semi-transparent overlay — simulates brightness increase
-    overlay = QWidget(view)
-    overlay.setStyleSheet("background-color: rgba(255, 255, 255, 80);")
-    overlay.setGeometry(view.rect())
-    overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
-    overlay.raise_()
-    overlay.show()
-
-    # Remove after 10 seconds so you can paint during that time
-    QTimer.singleShot(10000, lambda: overlay.deleteLater())
-
-    QMessageBox.information(None, "Diagnose", "Overlay active for 10 seconds — click OK then paint.")
-
-def test_overlay(panel=None):
-    overlay = _create_canvas_overlay()
-
-    if overlay is None:
-        QMessageBox.warning(None, "Test Overlay", "Could not create overlay.")
-        return
-
-    QTimer.singleShot(10000, lambda: _remove_canvas_overlay(overlay))
-
 # =====================================================================
 # PROCESS + TEMPORALITY INTERVENTIONS
 # =====================================================================
@@ -152,7 +118,6 @@ def brush_restriction(panel=None):
     # Switch the user to the disorienting preset immediately
     view.setCurrentBrushPreset(disorienting_preset)
 
-    # QUESTION: is this long enough? too long? too short?
     duration = random.randint(240,420)
 
     # Set up a poll timer that checks every 300ms whether the user has
@@ -538,7 +503,7 @@ def creation_interval(panel=None):
     ]
 
     prompt = random.choice(prompts)
-    duration = random.randint(15, 30)
+    duration = random.randint(120, 300)
 
     # Block the canvas with an overlay
     overlay = _create_canvas_overlay()  # ADDED
@@ -626,7 +591,7 @@ def canvas_toss(panel=None):
         f"Old canvas saved to:\n{backup_path}\n\nA new blank canvas has been opened."
     )
 
-# To figure out: block ctrl+Z
+# UNDO RESTRICTION INTERVENTION
 def undo_restriction(panel=None):
     from PyQt5.QtWidgets import QWidget
 
@@ -951,7 +916,7 @@ def locked_marks(panel=None):
     doc.setActiveNode(locked_layer)
     doc.refreshProjection()
 
-    duration = random.randint(15, 30)  # 4-7 minutes, 15 TO 30 FOR TESTING RN
+    duration = random.randint(240, 420)  # 4-7 minutes, 15 TO 30 FOR TESTING RN
 
     # Poll every 300ms to keep the locked marks layer active
     poll_timer = QTimer()
@@ -1034,7 +999,7 @@ def undo_erase_bank(panel=None):
         return
 
     budget = random.randint(2, 4)
-    duration = random.randint(15, 30)  # TESTING: change to randint(240, 420) for production
+    duration = random.randint(240, 420)  # TESTING: change to randint(240, 420) for production
 
     original_preset = view.currentBrushPreset()
 
@@ -1115,7 +1080,7 @@ def undo_erase_bank(panel=None):
                     else:
                         if not state["last_undo_handled"]:
                             state["last_undo_handled"] = True
-                            QTimer.singleShot(500, lambda: state.update({"last_undo_handled": False}))
+                            QTimer.singleShot(1000, lambda: state.update({"last_undo_handled": False}))
                             decrement_and_check()
                         return False
             return super().eventFilter(obj, event)
@@ -1419,7 +1384,6 @@ INTERVENTION_FUNCTIONS = {
     "body_reorientation": body_reorientation,
     "memory_reflection": memory_reflection,
     "brush_restriction": brush_restriction,
-    "diagnose_actions": diagnose_actions,
     "tool_restriction": tool_restriction,
     "subtractive_drawing": subtractive_drawing,
     "canvas_transformation": canvas_transformation,
