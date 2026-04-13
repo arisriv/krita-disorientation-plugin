@@ -412,7 +412,7 @@ def _restore_canvas_transformation(canvas, original_mirror, original_rotation, d
     )
 
 
-# TOOL RESTRICTION INTERVENTION: to revisit, not working as intended
+# TOOL RESTRICTION INTERVENTION
 def tool_restriction(panel=None):
     from PyQt5.QtWidgets import QToolButton
 
@@ -679,7 +679,6 @@ def _restore_undo_restriction(overlay, dialog):
     )
 
 # MARK FADING INTERVENTION
-
 def mark_fading(panel=None):
     app = Krita.instance()
     window = app.activeWindow()
@@ -801,7 +800,6 @@ def _restore_mark_fading(doc, fading_layer, dialog, fade_overlay=None):
     )
 
 # ANALOG REVISION INTERVENTION
-
 def analog_revision(panel=None):
     from PyQt5.QtCore import QObject, QEvent
     from PyQt5.QtGui import QKeySequence
@@ -1009,6 +1007,207 @@ def _restore_locked_marks(poll_timer, doc, locked_layer, original_node, dialog):
         None,
         "Marks Locked",
         "Your marks have been permanently locked.\nA new layer has been created above them."
+    )
+
+
+# UNDO/ERASE BANK INTERVENTION
+def undo_erase_bank(panel=None):
+    from PyQt5.QtCore import QObject, QEvent
+    from PyQt5.QtGui import QKeySequence
+    from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QDialog
+
+    app = Krita.instance()
+    window = app.activeWindow()
+
+    if window is None:
+        QMessageBox.warning(None, "Undo/Erase Bank", "No active Krita window.")
+        return
+
+    view = window.activeView()
+    if view is None:
+        QMessageBox.warning(None, "Undo/Erase Bank", "No active view.")
+        return
+
+    qwin = _get_main_window()
+    if qwin is None:
+        QMessageBox.warning(None, "Undo/Erase Bank", "No main window found.")
+        return
+
+    budget = random.randint(2, 4)
+    duration = random.randint(15, 30)  # TESTING: change to randint(240, 420) for production
+
+    original_preset = view.currentBrushPreset()
+
+    # --- Counter dialog ---
+    counter_dialog = QDialog(_get_main_window())
+    counter_dialog.setWindowTitle("Actions Remaining")
+    counter_dialog.setMinimumWidth(200)
+    counter_layout = QVBoxLayout()
+    counter_label = QLabel(f"{budget} undos/erases remaining")
+    counter_label.setStyleSheet("font-size: 13px; padding: 8px;")
+    counter_layout.addWidget(counter_label)
+    counter_dialog.setLayout(counter_layout)
+    counter_dialog.show()
+
+    state = {
+        "budget": budget,
+        "locked": False,
+        "last_was_eraser": False,
+        "last_undo_handled": False,
+        "half_count": 0,
+        "view": view,
+        "original_preset": original_preset,
+        "toolbar_overlay": None,
+    }
+
+    def update_counter():
+        if state["budget"] > 0:
+            counter_label.setText(f"{state['budget']} undos/erases remaining")
+            counter_label.setStyleSheet("font-size: 13px; padding: 8px;")
+        else:
+            counter_label.setText("No actions remaining")
+            counter_label.setStyleSheet("font-size: 13px; padding: 8px; color: red;")
+        counter_dialog.adjustSize()
+        counter_dialog.update()
+
+    def _do_decrement():
+        state["budget"] -= 1
+        update_counter()
+        if state["budget"] <= 0:
+            apply_full_restriction()
+
+    def decrement_and_check():
+        # For Ctrl+Z only — ShortcutOverride fires twice so only decrement every 2 calls
+        if state["locked"]:
+            return
+        state["half_count"] += 1
+        if state["half_count"] % 2 == 0:
+            _do_decrement()
+
+    def decrement_direct():
+        # For toolbar button and eraser — fires once, decrement directly
+        if state["locked"]:
+            return
+        _do_decrement()
+
+    def apply_full_restriction():
+        state["locked"] = True
+        toolbar = qwin.findChild(QWidget, "editToolBar")
+        if toolbar is not None:
+            overlay = QWidget(toolbar)
+            overlay.setStyleSheet("background-color: rgba(0, 0, 0, 120);")
+            overlay.setGeometry(toolbar.rect())
+            overlay.raise_()
+            overlay.show()
+            state["toolbar_overlay"] = overlay
+
+    # --- Undo interceptor ---
+    class UndoInterceptor(QObject):
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.ShortcutOverride:
+                seq_int = int(event.modifiers()) | event.key()
+                seq = QKeySequence(seq_int)
+                undo_action = Krita.instance().action("edit_undo")
+                if undo_action and seq == undo_action.shortcuts()[0]:
+                    if state["locked"]:
+                        event.accept()
+                        return True
+                    else:
+                        if not state["last_undo_handled"]:
+                            state["last_undo_handled"] = True
+                            QTimer.singleShot(500, lambda: state.update({"last_undo_handled": False}))
+                            decrement_and_check()
+                        return False
+            return super().eventFilter(obj, event)
+
+    blocker = UndoInterceptor(QApplication.instance())
+    QApplication.instance().installEventFilter(blocker)
+
+    # --- Eraser poll ---
+    poll_timer = QTimer()
+    poll_timer.setInterval(300)
+
+    def poll():
+        current = state["view"].currentBrushPreset()
+        if current is None:
+            state["last_was_eraser"] = False
+            return
+
+        is_eraser = "erase" in current.name().lower()
+
+        if is_eraser and not state["last_was_eraser"]:
+            if state["locked"]:
+                state["view"].setCurrentBrushPreset(state["original_preset"])
+            else:
+                decrement_direct()
+
+        elif state["locked"] and is_eraser:
+            state["view"].setCurrentBrushPreset(state["original_preset"])
+
+        if state["locked"]:
+            state["view"].setEraserMode(False)
+
+        state["last_was_eraser"] = is_eraser
+
+    poll_timer.timeout.connect(poll)
+    poll_timer.start()
+
+    # --- Countdown dialog ---
+    dialog = CountdownDialog(
+        "Undo/Erase Bank",
+        f"You have {budget} undo/erase actions.\nUse them wisely.",
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    # Connect toolbar undo AFTER dialog is shown to avoid premature firing
+    undo_action = app.action("edit_undo")
+    def on_toolbar_undo():
+        if not state["locked"]:
+            decrement_direct()
+
+    if undo_action:
+        undo_action.triggered.connect(on_toolbar_undo)
+
+    dialog.countdown_finished.connect(
+        lambda: _restore_undo_erase_bank(
+            blocker, poll_timer, counter_dialog,
+            state, dialog, undo_action, on_toolbar_undo
+        )
+    )
+
+
+def _restore_undo_erase_bank(blocker, poll_timer, counter_dialog, state, dialog, undo_action, on_toolbar_undo):
+    from PyQt5.QtWidgets import QApplication
+
+    QApplication.instance().removeEventFilter(blocker)
+
+    if undo_action:
+        try:
+            undo_action.triggered.disconnect(on_toolbar_undo)
+        except TypeError:
+            pass
+
+    poll_timer.stop()
+
+    if state["toolbar_overlay"] is not None:
+        state["toolbar_overlay"].deleteLater()
+
+    counter_dialog.close()
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Undo/Erase Bank Complete",
+        "Your undo and erase actions are fully restored."
     )
 
 # =====================================================================
@@ -1228,5 +1427,6 @@ INTERVENTION_FUNCTIONS = {
     "mark_fading": mark_fading,
     "analog_revision": analog_revision,
     "locked_marks": locked_marks,
-    "brightness_shift": brightness_shift
+    "brightness_shift": brightness_shift,
+    "undo_erase_bank": undo_erase_bank
 }

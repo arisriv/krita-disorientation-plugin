@@ -39,6 +39,13 @@ INTERVENTION_CATALOG = {
             "label": "Start Locked Marks"
         },
         {
+            "key": "undo_erase_bank",
+            "title": "Undo/Erase Bank",
+            "description": "Gives you a small budget of undo and erase actions. Once spent, undo and erasing are fully restricted for the remainder of the duration.",
+            "control": "button",
+            "label": "Start Undo/Erase Bank"
+        },
+        {
             "key": "diagnose_actions",
             "title": "Diagnostic",
             "description": "",
