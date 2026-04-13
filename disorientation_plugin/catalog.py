@@ -127,6 +127,13 @@ INTERVENTION_CATALOG = {
             "description": "Interrupts digital workflow with a brief prompt on how to physically reorient your body and its orientation relative to your workspace and device.",
             "control": "button",
             "label": "Generate Body Reorientation Prompt"
+        },
+        {
+            "key": "brightness_shift",
+            "title": "Brightness Shift",
+            "description": "Gradually shifts the perceived brightness of the canvas over time, simulating changing light conditions. The shift drifts naturally, sometimes brightening, sometimes darkening.",
+            "control": "button",
+            "label": "Start Brightness Shift"
         }
     ]
 }

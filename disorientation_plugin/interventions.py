@@ -65,42 +65,30 @@ def _remove_canvas_overlay(overlay):
         overlay.hide()    # ADDED
         overlay.deleteLater()  # ADDED
 
-
 def diagnose_actions(panel=None):
-    app = Krita.instance()
-    doc = app.activeDocument()
+    from PyQt5.QtWidgets import QWidget
+    from PyQt5.QtCore import Qt
 
-    if doc is None:
-        QMessageBox.warning(None, "Diagnose", "No active document.")
+    qwin = _get_main_window()
+    if qwin is None:
         return
 
-    output_path = Path.home() / "krita_actions_diagnostic.txt"
-    with open(output_path, "w") as f:
-        # Check active node
-        current = doc.activeNode()
-        f.write(f"current node: {current.name()}\n")
+    view = qwin.findChild(QWidget, "view_0")
+    if view is None:
+        return
 
-        # Check if we can create a paint layer
-        new_layer = doc.createNode("Mark Fading Test", "paintlayer")
-        f.write(f"new layer created: {new_layer is not None}\n")
+    # White semi-transparent overlay — simulates brightness increase
+    overlay = QWidget(view)
+    overlay.setStyleSheet("background-color: rgba(255, 255, 255, 80);")
+    overlay.setGeometry(view.rect())
+    overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
+    overlay.raise_()
+    overlay.show()
 
-        # Insert it above current layer
-        root = doc.rootNode()
-        root.addChildNode(new_layer, current)
-        f.write(f"layer inserted\n")
+    # Remove after 10 seconds so you can paint during that time
+    QTimer.singleShot(10000, lambda: overlay.deleteLater())
 
-        # Set it as active
-        doc.setActiveNode(new_layer)
-        f.write(f"active node after set: {doc.activeNode().name()}\n")
-
-        # Check opacity
-        new_layer.setOpacity(128)
-        f.write(f"opacity after set: {new_layer.opacity()}\n")
-
-        # Check mergeDown exists
-        f.write(f"has mergeDown: {hasattr(new_layer, 'mergeDown')}\n")
-
-    QMessageBox.information(None, "Diagnose", f"Written to:\n{output_path}")
+    QMessageBox.information(None, "Diagnose", "Overlay active for 10 seconds — click OK then paint.")
 
 def test_overlay(panel=None):
     overlay = _create_canvas_overlay()
@@ -997,7 +985,6 @@ def locked_marks(panel=None):
         lambda: _restore_locked_marks(poll_timer, doc, locked_layer, original_node, dialog)
     )
 
-
 def _restore_locked_marks(poll_timer, doc, locked_layer, original_node, dialog):
     poll_timer.stop()
 
@@ -1110,6 +1097,118 @@ def memory_reflection(panel=None):
     active_dialogs.append(dialog)
     dialog.show()
 
+
+# BRIGHTNESS SHIFT INTERVENTION
+def brightness_shift(panel=None):
+    from PyQt5.QtWidgets import QWidget
+    from PyQt5.QtCore import Qt
+
+    qwin = _get_main_window()
+    if qwin is None:
+        QMessageBox.warning(None, "Brightness Shift", "No main window found.")
+        return
+
+    view_widget = qwin.findChild(QWidget, "view_0")
+    if view_widget is None:
+        QMessageBox.warning(None, "Brightness Shift", "Could not find canvas.")
+        return
+
+    # Pick a random starting color (white = bright, black = dark)
+    # and a random starting opacity between 20 and 80
+    is_bright = random.choice([True, False])
+    current_opacity = random.randint(20, 80)
+    # Pick a random starting direction (increasing or decreasing opacity)
+    direction = random.choice([1, -1])
+
+    # Create the overlay — transparent to mouse events so user can still paint
+    overlay = QWidget(view_widget)
+    overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
+    overlay.setGeometry(view_widget.rect())
+    overlay.raise_()
+
+    def update_overlay():
+        color = "255, 255, 255" if is_bright else "0, 0, 0"
+        overlay.setStyleSheet(f"background-color: rgba({color}, {current_opacity});")
+        overlay.show()
+
+    update_overlay()
+
+    duration = random.randint(240, 420)  # 4-7 minutes
+
+    # Shift timer — fires every 30-60 seconds
+    shift_timer = QTimer()
+
+    state = {
+        "is_bright": is_bright,
+        "current_opacity": current_opacity,
+        "direction": direction,
+    }
+
+    def shift():
+        # 75% chance to continue in same direction, 25% to reverse
+        if random.random() < 0.25:
+            state["direction"] *= -1
+
+        # Apply shift
+        state["current_opacity"] += state["direction"] * 20
+
+        # Clamp and force direction reversal before hitting extremes
+        if state["current_opacity"] >= 160:
+            state["current_opacity"] = 160
+            state["direction"] = -1
+        elif state["current_opacity"] <= 20:
+            state["current_opacity"] = 20
+            state["direction"] = 1
+            # At low end, randomly flip between bright and dark
+            state["is_bright"] = random.choice([True, False])
+
+        # Update overlay appearance
+        color = "255, 255, 255" if state["is_bright"] else "0, 0, 0"
+        overlay.setStyleSheet(
+            f"background-color: rgba({color}, {state['current_opacity']});"
+        )
+
+    # Pick a random interval between 30 and 60 seconds for each shift
+    def schedule_next_shift():
+        interval = random.randint(30000, 60000)
+        shift_timer.setInterval(interval)
+        shift_timer.start()
+
+    shift_timer.setSingleShot(True)
+    shift_timer.timeout.connect(lambda: [shift(), schedule_next_shift()])
+    schedule_next_shift()
+
+    dialog = CountdownDialog(
+        "Brightness Shift",
+        "The light around your work is shifting.\nContinue painting.",
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+    dialog.countdown_finished.connect(
+        lambda: _restore_brightness_shift(shift_timer, overlay, dialog)
+    )
+
+def _restore_brightness_shift(shift_timer, overlay, dialog):
+    shift_timer.stop()
+    overlay.deleteLater()
+
+    if dialog in active_dialogs:
+        active_dialogs.remove(dialog)
+
+    if dialog.isVisible():
+        dialog.close()
+
+    QMessageBox.information(
+        None,
+        "Brightness Shift Complete",
+        "The light has returned to normal."
+    )
+
+
 # Registry mapping intervention keys to executable functions
 INTERVENTION_FUNCTIONS = {
     "test_intervention": test_intervention,
@@ -1128,5 +1227,6 @@ INTERVENTION_FUNCTIONS = {
     "undo_restriction": undo_restriction,
     "mark_fading": mark_fading,
     "analog_revision": analog_revision,
-    "locked_marks": locked_marks
+    "locked_marks": locked_marks,
+    "brightness_shift": brightness_shift
 }
