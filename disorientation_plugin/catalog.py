@@ -85,13 +85,6 @@ INTERVENTION_CATALOG = {
     ],
     "Artistic Milieu": [
         {
-            "key": "scenius_prompt",
-            "title": "Scenius Prompt",
-            "description": "Prompts engagement with another artwork, artist, or reference before continuing.",
-            "control": "button",
-            "label": "Test Scenius Prompt"
-        },
-        {
             "key": "perception_reframe",
             "title": "Placement / Perception Reframing",
             "description": "Reframe the artwork according to a new imagined viewing context.",
@@ -104,6 +97,20 @@ INTERVENTION_CATALOG = {
             "description": "Provides a prompt tied to memory and asks the artist to reflect before returning to the canvas.",
             "control": "button",
             "label": "Start Memory Reflection"
+        },
+        {
+            "key": "audience_reframing",
+            "title": "Audience Reframing",
+            "description": "Suggests a new potential audience for whom to begin creating the current artwork. Make at least one change consistent with this new audience.",
+            "control": "button",
+            "label": "Audience Reframing"
+        },
+        {
+            "key": "simulated_critique",
+            "title": "Simulated Critique",
+            "description": "Provides a generic critique of the current work on the canvas to take action on.",
+            "control": "button",
+            "label": "Simulated Critique"
         }
     ],
     "Somaesthetics + Physical Environment": [
@@ -112,7 +119,7 @@ INTERVENTION_CATALOG = {
             "title": "Posture Check",
             "description": "Interrupts the digital workflow with a brief prompt about bodily posture.",
             "control": "button",
-            "label": "Test Posture Check"
+            "label": "Posture Check"
         },
         {
             "key": "body_reorientation",
@@ -127,6 +134,20 @@ INTERVENTION_CATALOG = {
             "description": "Gradually shifts the perceived brightness of the canvas over time, simulating changing light conditions. The shift drifts naturally, sometimes brightening, sometimes darkening.",
             "control": "button",
             "label": "Start Brightness Shift"
+        },
+        {
+            "key": "input_reorientation",
+            "title": "Input Reorientation",
+            "description": "Suggests a physical reorientation of your input device to reconfigure your physical relationship to the work.",
+            "control": "button",
+            "label": "Input Reorientation"
+        },
+        {
+            "key": "emotion_based_reflection",
+            "title": "Emotion-Based Reflection",
+            "description": "Provides a prompt emotion and asks you to reflect on its most recent occurrence for a given time period before returning to the canvas.",
+            "control": "button",
+            "label": "Start Emotion-Based Reflection"
         }
     ]
 }

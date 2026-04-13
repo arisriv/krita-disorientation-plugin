@@ -1197,6 +1197,60 @@ def perception_reframe(panel=None):
         f"{prompt}\n\nMake at least one change to your artwork based on this new viewing context."
     )
 
+def audience_reframing(panel=None):
+    prompts = [
+        "Imagine this work will be seen primarily by children under ten. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by someone grieving. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by someone who knows nothing about art. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by an artist you deeply admire. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by your future self, ten years from now. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by a stranger on the street. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by someone who dislikes your usual style. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by someone who loves your usual style. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen by a community you are not part of. Make at least one change with this audience in mind.",
+        "Imagine this work will be seen anonymously, with no name attached. Make at least one change with this audience in mind.",
+    ]
+
+    prompt = random.choice(prompts)
+
+    QMessageBox.information(
+        None,
+        "Audience Reframing",
+        prompt
+    )
+
+def simulated_critique(panel=None):
+    critiques = [
+        "The color relationships aren't working for me.",
+        "I think the geometry could be simpler.",
+        "Something about the composition feels unresolved.",
+        "It feels like you're avoiding a part of this.",
+        "The marks feel a bit hesitant.",
+        "I wonder if this could be more abstracted.",
+        "There's too much going on in one area.",
+        "The focal point isn't clear to me.",
+        "I think you could push the contrast further.",
+        "Some of this feels overworked.",
+        "The edges feel too uniform throughout.",
+        "I'm not sure what this wants to be yet.",
+        "The value structure isn't reading clearly.",
+        "I think you could be bolder here.",
+        "Something feels safe about this — what would happen if you broke it?",
+        "The scale relationships feel off.",
+        "I wonder if less would be more here.",
+        "The empty areas aren't doing enough work.",
+        "This feels like it's almost there but not committed.",
+        "I think the texture could be more varied.",
+    ]
+
+    critique = random.choice(critiques)
+
+    QMessageBox.information(
+        None,
+        "Simulated Critique",
+        critique
+    )
+
 # =====================================================================
 # SOMAESTHETICS + PHYSICAL ENVIRONMENT INTERVENTIONS
 # =====================================================================
@@ -1372,13 +1426,85 @@ def _restore_brightness_shift(shift_timer, overlay, dialog):
         "The light has returned to normal."
     )
 
+def emotion_based_reflection(panel=None):
+    prompts = [
+        ("Think of the last time you felt genuine joy. Sit with that feeling before returning to the canvas.", 45),
+        ("Think of the last time you felt unexpectedly calm. Reflect on that moment before returning to the canvas.", 45),
+        ("Think of the last time you felt creatively alive. Hold that feeling before returning to the canvas.", 60),
+        ("Think of the last time you felt frustrated. Reflect on what was underneath it before returning to the canvas.", 45),
+        ("Think of the last time you felt awe. Sit with that feeling before returning to the canvas.", 60),
+        ("Think of the last time you felt completely absorbed in something. Reflect on it before returning to the canvas.", 45),
+        ("Think of the last time you felt melancholy. Sit with that feeling before returning to the canvas.", 45),
+        ("Think of the last time you felt proud. Reflect on what led to that moment before returning to the canvas.", 45),
+        ("Think of the last time you felt surprised. Sit with that feeling before returning to the canvas.", 30),
+        ("Think of the last time you felt deeply content. Reflect on it before returning to the canvas.", 45),
+    ]
+
+    prompt, duration = random.choice(prompts)
+
+    dialog = CountdownDialog(
+        "Emotion-Based Reflection",
+        prompt,
+        duration,
+        parent=_get_main_window()
+    )
+
+    active_dialogs.append(dialog)
+    dialog.show()
+
+def posture_check(panel=None):
+    prompts = [
+        "Check your posture. Are your shoulders relaxed and down?",
+        "Check your posture. Is your back straight and supported?",
+        "Check your posture. Are your feet flat on the floor?",
+        "Check your posture. Is your neck aligned with your spine?",
+        "Check your posture. Are your wrists in a neutral position?",
+        "Check your posture. Is your screen at eye level?",
+        "Check your posture. Are you holding tension anywhere in your body?",
+    ]
+
+    prompt = random.choice(prompts)
+
+    QMessageBox.information(
+        None,
+        "Posture Check",
+        f"{prompt}\n\nTake a moment to adjust before returning to the canvas."
+    )
+
+
+def input_reorientation(panel=None):
+    prompts = [
+        "Rotate your tablet or input device 90° clockwise and continue working.",
+        "Rotate your tablet or input device 90° counter-clockwise and continue working.",
+        "Move your input device to your non-dominant hand and continue working.",
+        "Move your tablet further from you and work with broader arm movements.",
+        "Move your tablet closer to you and work with finer wrist movements.",
+        "Tilt your tablet to a 45° angle and continue working.",
+        "Stand up and reposition your tablet to work from a standing position.",
+        "Hold your stylus from the very top, as far from the tip as possible, and continue working.",
+        "Hold your stylus with only two fingers and continue working.",
+        "Hold your stylus as loosely as possible — barely gripping it — and continue working.",
+        "Hold your stylus overhand, like a brush held from above, and continue working.",
+        "Rest your drawing hand on the tablet surface and draw only from the wrist, not the arm.",
+        "Draw only using arm movements — lift your wrist off the tablet entirely.",
+        "Close your eyes, make three marks, then open your eyes and continue from there.",
+        "Work with your tablet on your lap rather than on the desk.",
+        "Move the tablet to your non-dominant side and reach across your body to draw.",
+    ]
+
+    prompt = random.choice(prompts)
+
+    QMessageBox.information(
+        None,
+        "Input Reorientation",
+        f"{prompt}"
+    )
 
 # Registry mapping intervention keys to executable functions
 INTERVENTION_FUNCTIONS = {
     "test_intervention": test_intervention,
     "canvas_toss": canvas_toss,
-    "scenius_prompt": test_intervention,
-    "posture_check": test_intervention,
+    "posture_check": posture_check,
     "perception_reframe": perception_reframe,
     "creation_interval": creation_interval,
     "body_reorientation": body_reorientation,
@@ -1392,5 +1518,9 @@ INTERVENTION_FUNCTIONS = {
     "analog_revision": analog_revision,
     "locked_marks": locked_marks,
     "brightness_shift": brightness_shift,
-    "undo_erase_bank": undo_erase_bank
+    "undo_erase_bank": undo_erase_bank,
+    "input_reorientation": input_reorientation,
+    "emotion_based_reflection": emotion_based_reflection,
+    "audience_reframing": audience_reframing,  
+    "simulated_critique": simulated_critique, 
 }
