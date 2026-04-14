@@ -111,7 +111,14 @@ INTERVENTION_CATALOG = {
             "description": "Provides a generic critique of the current work on the canvas to take action on.",
             "control": "button",
             "label": "Simulated Critique"
-        }
+        },
+        {
+            "key": "art_encounter",
+            "title": "Art Encounter",
+            "description": "Presents a series of artworks for reflection before returning to the canvas.",
+            "control": "button",
+            "label": "Start Art Encounter"
+        },
     ],
     "Somaesthetics + Physical Environment": [
         {

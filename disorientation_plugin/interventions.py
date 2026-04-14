@@ -1251,6 +1251,138 @@ def simulated_critique(panel=None):
         critique
     )
 
+def art_encounter(panel=None):
+    from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QSizePolicy
+    from PyQt5.QtGui import QPixmap
+    from PyQt5.QtCore import Qt, QTimer
+
+    # Find the images folder inside the plugin directory
+    plugin_dir = Path(__file__).parent
+    images_dir = plugin_dir / "art_encounter_images"
+
+    if not images_dir.exists():
+        QMessageBox.warning(None, "Art Encounter", "No art_encounter_images folder found.")
+        return
+
+    # Find all images in the folder
+    extensions = {".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"}
+    all_images = [f for f in images_dir.iterdir() if f.suffix in extensions]
+
+    if len(all_images) < 1:
+        QMessageBox.warning(None, "Art Encounter", "No images found in art_encounter_images folder.")
+        return
+
+    # Pick 5 unique random images using random.sample which guarantees no repeats
+    count = min(5, len(all_images))
+    selected_images = random.sample(all_images, count)  # sample never repeats
+
+    # Block the canvas during the encounter
+    overlay = _create_canvas_overlay()
+
+    # --- Build the dialog ---
+    qwin = _get_main_window()
+    dialog = QDialog(qwin)
+    dialog.setWindowTitle("Art Encounter")
+    dialog.setMinimumSize(1000, 800)
+    dialog.setStyleSheet("background-color: #1a1a1a;")
+    dialog.setWindowFlags(
+        dialog.windowFlags() | Qt.WindowStaysOnTopHint
+    )
+
+    layout = QVBoxLayout()
+    layout.setContentsMargins(20, 20, 20, 20)
+    layout.setSpacing(16)
+
+    # Image/title label
+    image_label = QLabel()
+    image_label.setAlignment(Qt.AlignCenter)
+    image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    image_label.setMinimumHeight(680)
+    layout.addWidget(image_label)
+
+    # Next/Begin/Done button — disabled initially
+    next_button = QPushButton("Begin")
+    next_button.setEnabled(False)
+    next_button.setStyleSheet("padding: 8px 24px; font-size: 13px;")
+    layout.addWidget(next_button, alignment=Qt.AlignCenter)
+
+    dialog.setLayout(layout)
+
+    # State — start at -1 for title screen
+    state = {"index": -1}
+
+    def load_image(index):
+        if index == -1:
+            # Title screen
+            image_label.clear()
+            image_label.setText(
+                "Take a moment to encounter these works.\n\n"
+                "Move through them at your own pace.\n\n"
+                "Let them sit with you before returning to your canvas."
+            )
+            image_label.setStyleSheet(
+                "font-size: 16px; color: white;"
+            )
+            next_button.setText("Begin")
+            next_button.setEnabled(False)
+            QTimer.singleShot(5000, lambda: next_button.setEnabled(True))
+            return
+
+        # Clear title screen styling before showing image
+        image_label.setStyleSheet("")
+        image_label.clear()
+
+        path = str(selected_images[index])
+        pixmap = QPixmap(path)
+
+        if pixmap.isNull():
+            image_label.setText("Could not load image.")
+            return
+
+        # Scale to fit while maintaining aspect ratio
+        scaled = pixmap.scaled(
+            image_label.width() or 960,
+            image_label.height() or 680,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        image_label.setPixmap(scaled)
+
+        # Update button label
+        if index >= count - 1:
+            next_button.setText("Done")
+        else:
+            next_button.setText("Next")
+
+        # Disable for 5 seconds before allowing advance
+        next_button.setEnabled(False)
+        QTimer.singleShot(5000, lambda: next_button.setEnabled(True))
+
+    def on_next():
+        if state["index"] == -1:
+            # Move from title screen to first image
+            state["index"] = 0
+            load_image(0)
+        elif state["index"] >= count - 1:
+            # Done — remove overlay and close
+            _remove_canvas_overlay(overlay)
+            dialog.accept()
+        else:
+            state["index"] += 1
+            load_image(state["index"])
+
+    next_button.clicked.connect(on_next)
+
+    # Prevent closing during encounter
+    def closeEvent(event):
+        event.ignore()
+
+    dialog.closeEvent = closeEvent
+
+    # Show dialog and load title screen
+    dialog.show()
+    QTimer.singleShot(100, lambda: load_image(-1))
+
 # =====================================================================
 # SOMAESTHETICS + PHYSICAL ENVIRONMENT INTERVENTIONS
 # =====================================================================
@@ -1523,4 +1655,5 @@ INTERVENTION_FUNCTIONS = {
     "emotion_based_reflection": emotion_based_reflection,
     "audience_reframing": audience_reframing,  
     "simulated_critique": simulated_critique, 
+    "art_encounter": art_encounter
 }
