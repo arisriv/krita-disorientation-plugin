@@ -13,11 +13,11 @@ from .dialogs import CountdownDialog
 active_dialogs = []
 
 def _get_main_window():
-    from PyQt5.QtWidgets import QApplication, QMainWindow  # ADDED
-    for widget in QApplication.topLevelWidgets():          # ADDED
-        if isinstance(widget, QMainWindow):                # ADDED
-            return widget                                  # ADDED
-    return None                                            # ADDED
+    from PyQt5.QtWidgets import QApplication, QMainWindow
+    for widget in QApplication.topLevelWidgets():
+        if isinstance(widget, QMainWindow) and "MainWindow" in widget.objectName():
+            return widget
+    return None
 
 def test_intervention(panel=None):
     QMessageBox.information(
