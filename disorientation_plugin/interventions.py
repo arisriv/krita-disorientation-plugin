@@ -154,8 +154,7 @@ def brush_restriction(panel=None):
     dialog.show()
 
     # After the duration, stop polling and restore the original preset
-    QTimer.singleShot(
-        duration * 1000,
+    dialog.countdown_finished.connect(
         lambda: _restore_brush(poll_timer, view, banned_preset, dialog)
     )
 
@@ -268,8 +267,7 @@ def subtractive_drawing(panel=None):
     active_dialogs.append(dialog)
     dialog.show()
 
-    QTimer.singleShot(
-        duration * 1000,
+    dialog.countdown_finished.connect(
         lambda: _restore_subtractive(poll_timer, view, original_preset, dialog)
     )
 
@@ -351,8 +349,7 @@ def canvas_transformation(panel=None):
     active_dialogs.append(dialog)
     dialog.show()
 
-    QTimer.singleShot(
-        duration * 1000,
+    dialog.countdown_finished.connect(
         lambda: _restore_canvas_transformation(
             canvas, original_mirror, original_rotation, dialog
         )
