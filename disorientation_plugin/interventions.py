@@ -15,7 +15,7 @@ active_dialogs = []
 def _get_main_window():
     from PyQt5.QtWidgets import QApplication, QMainWindow
     for widget in QApplication.topLevelWidgets():
-        if isinstance(widget, QMainWindow) and "MainWindow" in widget.objectName():
+        if isinstance(widget, QMainWindow) and "MainWindow#" in widget.objectName():
             return widget
     return None
 
